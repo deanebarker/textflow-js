@@ -1,0 +1,133 @@
+<h1>Debug Data</h1>
+<div class="debug">
+     <div class="command">Initial Input</div>
+     <details>
+          <summary>Input</summary>
+          <textarea>{{ history.input }}</textarea>
+     </details>
+</div>
+<svg viewBox="0 0 512 512"><polygon points="283.7,298.7 283.7,0 198.3,0 198.3,298.7 70.3,298.7 241,512 411.7,298.7 "></polygon></svg>
+
+
+{% assign lastOutput = history.input %}
+{% for entry in history %}
+
+     <div class="debug">
+          <div class="command">{{ entry.command.source | default:"[no source]" | escape }}</div>
+          <details>
+               <summary>Parsed Command</summary>
+               <pre>{{ entry.command| json:2 | escape }}</pre>
+          </details>
+          {% if lastOutput == entry.output %}
+          <div class="unchanged"><em>Working text unchanged</em></div>
+          {% else %}
+          <details>
+               <summary>Output</summary>
+               <textarea>{{ entry.output }}</textarea>
+          </details>
+          {% endif %}
+          <dl>
+               <dt>Duration</dt>
+               <dd>{{ entry.duration }}ms</dd>
+               <dt>Output Delta</dt>
+               <dd>
+                    {% if entry.delta > 0 %}
+                    <span class="positive">+{{ entry.delta | commas }}</span>
+                    {% endif %}
+                    {% if entry.delta < 0 %}
+                    <span class="negative">{{ entry.delta | commas }}</span>
+                    {% endif %}
+                    {% if entry.delta == 0 %}
+                    <span class="neutral">0</span>
+                    {% endif %}
+               </dd>
+          </dl>
+     </div>
+     <svg viewBox="0 0 512 512"><polygon points="283.7,298.7 283.7,0 198.3,0 198.3,298.7 70.3,298.7 241,512 411.7,298.7 "></polygon></svg>
+     {% assign lastOutput = entry.output %}
+{% endfor %}
+<div class="debug final">Final Output ({{ history.duration }}ms)</div>
+<style>
+     svg {
+          height: 100px;
+          margin-left:70px;
+          position: relative;
+          top: 10px;
+          fill: rgb(240,240,240);
+     }
+     polygon {
+          stroke-width: 1px;
+          stroke: black;
+     }
+     :host {
+          font-family: sans-serif;
+          margin: 2rem;
+          font-size: 13px;
+     }
+     h1 {
+          border-top: dashed 2px black;
+          padding-top: 1rem;
+     }
+     dl {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 0.25em 1em;
+          margin: 0;
+     }
+     dt::after {
+          content: ":";
+          padding-right: 0.5em;
+     }
+     dd {
+          margin: 0;
+     }
+     .debug {
+     padding: 1rem;
+     background-color: rgb(240,240,240);
+     border: solid 1px rgb(200,200,200);
+     border-radius: 0.5rem;
+     margin-left: 2rem;
+     margin-right: 2rem;
+     }
+
+     .debug details, .debug .unchanged {
+          margin-bottom: 1rem;
+     }
+
+     .debug .command {
+     font-weight: bold;
+     font-family: monospace;
+     font-size: 1rem;
+     margin-bottom: 1rem;
+     }
+
+     .debug pre {
+     background: white;
+     padding: 1rem;
+     border-radius: 0.5rem;
+     font-size: 0.7rem;
+     border: solid 1px rgb(100,100,100);
+     overflow: scroll
+     }
+
+     .debug textarea {
+     margin-top: 1rem;
+     width: 100%;
+     box-sizing: border-box;
+     border-radius: 0.5rem;
+     height: 100px;
+     padding: 0.5rem;
+     border: solid 1px rgb(100,100,100);
+     }
+
+     .debug.final {
+     width: 250px;
+     text-align: center;
+     }
+
+     span.positive { color: green; }
+     span.negative { color: red; }
+     span.neutral { color: black; }
+</style>
+
+ 
