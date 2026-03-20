@@ -13,7 +13,7 @@
 {% for entry in history %}
 
      <div class="debug">
-          <div class="command">{{ entry.command.source | default:"[no source]" | escape }}</div>
+          <div class="command">{{ entry.command.name }} {% if entry.command.arguments.size > 0 %}({% for arg in entry.command.arguments %}{{ arg.key }}{% if forloop.last == false %}, {% endif %}{% endfor %}){% endif %}</div>
           <details>
                <summary>Parsed Command</summary>
                <pre>{{ entry.command| json:2 | escape }}</pre>

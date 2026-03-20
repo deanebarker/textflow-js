@@ -1,4 +1,4 @@
-import jsonata from "https://esm.sh/jsonata@2.1.0";
+import jsonata from "jsonata";
 
 async function jsonataQuery(working, command, p) {
   let expr = command.getArg("expr", command);
@@ -8,6 +8,9 @@ async function jsonataQuery(working, command, p) {
     contentType: "application/json",
   };
 }
+
+// Meta
+
 jsonataQuery.title = "JSONata Query";
 jsonataQuery.description = "Apply a JSONata expression to transform JSON data.";
 jsonataQuery.args = [
@@ -21,7 +24,7 @@ jsonataQuery.allowedContentTypes = ["json"];
 jsonataQuery.parseValidators = [
   {
     test: (command) => {
-      return command.getArg("expr");
+      return command.hasArg("expr");
     },
     message: "You must provide a JSONata expression.",
   },

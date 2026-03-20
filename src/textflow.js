@@ -7,11 +7,10 @@ import setDebug from "./commands/setDebug.js";
 import noOp from "./commands/noOp.js";
 import absolutize from "./commands/absolutize.js";
 import jsonataQuery from "./commands/jsonata.js";
-import setContainerSize from "./commands/setContainerSize.js";
+import setContainerStyles from "./commands/setContainerStyles.js";
 import http from "./commands/http.js";
 import addCss from "./commands/addCss.js";
 import extract from "./commands/extract.js";
-import extractMultiple from "./commands/extractMultiple.js";
 import wrap from "./commands/wrap.js";
 import templateJson from "./commands/templateJson.js";
 import templateHtml from "./commands/templateHtml.js";
@@ -24,8 +23,14 @@ import append from "./commands/append.js";
 import remove from "./commands/remove.js";
 import removeLines from "./commands/removeLines.js";
 import wrapLines from "./commands/wrapLines.js";
+import setAttribute from "./commands/setAttribute.js";
+import outputVars from "./commands/outputVars.js";
+import templateCsv from "./commands/templateCsv.js";
+import stripHyperlinks from "./commands/stripHyperlinks.js";
 
 import debugTemplate from "./templates/debug.liquid";
+
+import { Liquid } from "liquidjs";
 
 //==============================================================================
 // PUBLIC API FUNCTIONS
@@ -38,10 +43,12 @@ export async function executePipeline(
   input,
   initialContentType,
   source,
-  commands
+  commands,
+  vars
 ) {
-  let working = new WorkingData(input, initialContentType, source, null);
+  const working = new WorkingData(input, initialContentType, source, null);
   const p = new Pipeline(commands);
+  p.vars = vars ?? new Map();
   return await p.execute(working);
 }
 
@@ -68,6 +75,8 @@ export class Pipeline {
 
   debug = false;
 
+  vars = new Map(); // Variables for this pipeline execution
+
   static staticCommandLib = new Map(); // Commands available to all Pipeline instances
   instanceCommandLib = new Map(); // Commands specific to this instance
 
@@ -76,6 +85,7 @@ export class Pipeline {
   //============================================================================
 
   static {
+    Pipeline.staticCommandLib.set("absolutize", absolutize);
     Pipeline.staticCommandLib.set("extract", extract);
     Pipeline.staticCommandLib.set("wrap", wrap);
     Pipeline.staticCommandLib.set("template-json", templateJson);
@@ -83,12 +93,9 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("new-lines", newLines);
     Pipeline.staticCommandLib.set("markdown", markdown);
     Pipeline.staticCommandLib.set("http", http);
-    Pipeline.staticCommandLib.set("extract-multiple", extractMultiple);
-    Pipeline.staticCommandLib.set("extract-css", extractCss);
     Pipeline.staticCommandLib.set("add-css", addCss);
-    Pipeline.staticCommandLib.set("set-container-size", setContainerSize);
+    Pipeline.staticCommandLib.set("set-container-styles", setContainerStyles);
     Pipeline.staticCommandLib.set("jsonata", jsonataQuery);
-    Pipeline.staticCommandLib.set("absolutize", absolutize);
     Pipeline.staticCommandLib.set("template-html", templateHtml);
     Pipeline.staticCommandLib.set("set-type", forceType);
     Pipeline.staticCommandLib.set("set-debug", setDebug);
@@ -96,8 +103,12 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("prepend", prepend);
     Pipeline.staticCommandLib.set("append", append);
     Pipeline.staticCommandLib.set("remove", remove);
+    Pipeline.staticCommandLib.set("strip-hyperlinks", stripHyperlinks);
     Pipeline.staticCommandLib.set("remove-lines", removeLines);
     Pipeline.staticCommandLib.set("wrap-lines", wrapLines);
+    Pipeline.staticCommandLib.set("set-attribute", setAttribute);
+    Pipeline.staticCommandLib.set("output-vars", outputVars);
+    Pipeline.staticCommandLib.set("template-csv", templateCsv);
   }
 
   //============================================================================
@@ -121,10 +132,10 @@ export class Pipeline {
    * Validate all commands in the pipeline without executing them
    */
   validate() {
-    let errors = [];
+    const errors = [];
 
     for (let command of this.commands) {
-      this.wrapCommand(command);
+      this.wrapCommand(command, this);
 
       // Ensure the command exists
       if (!this.getCommandFunction(command.name)) {
@@ -133,7 +144,7 @@ export class Pipeline {
       }
 
       // Run its validators
-      let func = this.getCommandFunction(command.name);
+      const func = this.getCommandFunction(command.name);
       for (let validator of func.parseValidators || []) {
         if (!validator.test(command)) {
           errors.push(`Command "${command.name}": ${validator.message}`);
@@ -178,16 +189,41 @@ export class Pipeline {
   /**
    * Add helper methods to a command object
    */
-  wrapCommand(command) {
+  wrapCommand(command, pipeline) {
+    command.pipeline = pipeline;
+    command.hasArg = function (name) {
+      for (const possibleName of name.split(",").map((n) => n.trim())) {
+        if (this.arguments.some((a) => a.key === possibleName)) {
+          return true;
+        }
+      }
+      return false;
+    };
     command.getArg = function (name) {
       for (const possibleName of name.split(",").map((n) => n.trim())) {
+
         let value = this.arguments.filter((a) => a.key === possibleName)[0]
           ?.value;
+        
+        if(value === undefined || value == null) continue;
+
+        // Is this a variable reference?
+        const variableRegex = /^{\w+}$/; // This is a regex because some Liquid templates might start and end with a brace
+        if(typeof value === "string" && variableRegex.test(value)) {
+          const varName = value.slice(1,-1).trim();
+          if(this.pipeline.vars.has(varName)){
+            value = this.pipeline.vars.get(varName);
+          } else {
+            value = null;
+          } 
+        }
+        
         if (value !== null) return value;
       }
       return null;
     };
   }
+
 
   //============================================================================
   // MAIN EXECUTION METHOD
@@ -211,8 +247,8 @@ export class Pipeline {
       return this.returnWorking(working);
     }
 
-    let pipelineStart = performance.now();
-    let initialInput = working.text;
+    const pipelineStart = performance.now();
+    const initialInput = working.text;
 
     // Execute all commands in order
     for (let command of [
@@ -220,13 +256,13 @@ export class Pipeline {
       ...this.commands,
       ...this.tailCommands,
     ]) {
-      this.wrapCommand(command);
+      this.wrapCommand(command, this);
 
       this.log(`Executing: ${command.name}`, working.text, command.arguments);
 
       // Initialize command history tracking
-      let history = {};
-      history.command = command;
+      const history = {};
+      history.command = { name: command.name, source: command.source, arguments: command.arguments };
       history.input = working.text;
 
       // Skip unknown commands
@@ -236,15 +272,17 @@ export class Pipeline {
       }
 
       try {
-        let func = this.getCommandFunction(command.name);
+        const func = this.getCommandFunction(command.name);
 
         // Run validation
         for (let validator of func.parseValidators || []) {
+          if(!validator.test) continue; // If there's no test function, skip it
           if (!validator.test(command)) {
             this.log(
               `Validation failed for command ${command.name}: ${validator.message}`
             );
-            return new WorkingData(); // Stop execution if validation fails
+            working.abort = true; // Stop execution if validation fails
+            return working;
           }
         }
 
@@ -265,8 +303,8 @@ export class Pipeline {
         }
 
         // Execute the command
-        let start = performance.now();
-        let commandResult = await func(working, command, this);
+        const start = performance.now();
+        const commandResult = await func(working, command, this);
 
         // Handle different return types from commands
         this.processCommandResult(working, commandResult);
@@ -303,7 +341,7 @@ export class Pipeline {
     // Clean up and finalize
     this.tailCommands = []; // Clear tail commands after use
 
-    let pipelineEnd = performance.now();
+    const pipelineEnd = performance.now();
     working.history.duration = pipelineEnd - pipelineStart;
     working.history.input = initialInput;
 
@@ -385,13 +423,15 @@ export class Pipeline {
   //============================================================================
 
   /**
-   * Emit a custom event
+   * Emit a custom event when running in a browser
    */
   emit(type, detail, cancelable) {
-    let event = new CustomEvent(type, {
+    const event = new CustomEvent(type, {
       detail,
       cancelable: cancelable || false,
     });
+
+    if(typeof document === "undefined") return true; // We're not in a browser environment, so just return true to allow all events
     const eventResult = document.dispatchEvent(event);
     return eventResult;
   }
@@ -407,6 +447,7 @@ export class Pipeline {
    * Generate debug data for the pipeline execution
    */
   static async getDebugData(working) {
+
     const engine = new Liquid();
     engine.registerFilter("commas", function (value) {
       return Intl.NumberFormat("en-US").format(value);
@@ -418,6 +459,134 @@ export class Pipeline {
     const shadowRoot = debugElement.attachShadow({ mode: "open" });
     shadowRoot.innerHTML = debugHtml;
     return debugElement;
+  }
+
+}
+
+//==============================================================================
+// HELPERS CLASS - DOM utility methods for browser and Node.js environments
+//==============================================================================
+
+export class Helpers {
+  static async parseHtml(html) {
+    if (typeof window !== "undefined") {
+      return new DOMParser().parseFromString(html, "text/html");
+    } else {
+      const { JSDOM } = await import('jsdom');
+      const dom = new JSDOM(html);
+      return dom.window.document;
+    }
+  }
+
+  static async getDom() {
+    if (typeof window !== "undefined") {
+      return document;
+    } else {
+      const { JSDOM } = await import('jsdom');
+      const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>");
+      return dom.window.document;
+    }
+  }
+
+  static detectMimeType(input) {
+    const s = typeof input === "string" ? input : String(input);
+    const t = s.trim();
+
+    // 1) JSON (only objects/arrays to avoid misclassifying scalars like "42")
+    if (t.startsWith("{") || t.startsWith("[")) {
+      try {
+        JSON.parse(t);
+        return "application/json";
+      } catch (_) {
+        /* not JSON */
+      }
+    }
+
+    // 2) HTML (doctype, common tags, or a paired tag)
+    if (looksLikeHTML(t)) {
+      return "text/html";
+    }
+
+    // 3) CSV (RFC4180-ish heuristic: ≥2 non-empty lines, consistent comma-separated column counts ≥2)
+    if (looksLikeCSV(t)) {
+      return "text/csv";
+    }
+
+    // 4) Fallback
+    return "text/plain";
+
+    function looksLikeHTML(str) {
+      if (!str || str[0] !== "<") return false;
+      if (/^<!doctype\s+html>/i.test(str)) return true;
+      if (
+        /<(html|head|body|script|style|div|span|p|a|ul|ol|li|table|tr|td|section|article|header|footer)\b/i.test(
+          str
+        )
+      ) {
+        return true;
+      }
+      return /<([A-Za-z][\w:-]*)(\s[^>]*)?>[\s\S]*<\/\1>/m.test(str);
+    }
+
+    function looksLikeCSV(str) {
+      if (!str) return false;
+
+      const lines = str.split(/\r?\n/).filter((l) => l.trim() !== "");
+      if (lines.length < 2) return false;
+      const sample = lines.slice(0, 50);
+
+      if (!sample.some((l) => l.includes(","))) return false;
+
+      const counts = sample.map((l) => splitCsvLine(l).length);
+
+      const freq = {};
+      for (const c of counts) freq[c] = (freq[c] || 0) + 1;
+      let modeCount = 0,
+        modeCols = 0;
+      for (const k in freq) {
+        const cols = Number(k),
+          f = freq[k];
+        if (f > modeCount) {
+          modeCount = f;
+          modeCols = cols;
+        }
+      }
+
+      if (
+        modeCols >= 2 &&
+        modeCount >= Math.max(2, Math.ceil(sample.length * 0.6))
+      ) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function splitCsvLine(line) {
+      const out = [];
+      let cur = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === "," && !inQuotes) {
+          out.push(cur);
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur);
+      return out;
+    }
   }
 }
 
@@ -449,10 +618,10 @@ class WorkingData {
    * Get the content type, using detection if not explicitly set
    */
   getContentType() {
-    let type = this.contentType || this.contentTypeByExtension[this.extension];
+    const type = this.contentType || this.contentTypeByExtension[this.extension];
     if (type) return type;
 
-    return detectMimeType(this.text);
+    return Helpers.detectMimeType(this.text);
   }
 
   /**
@@ -466,136 +635,3 @@ class WorkingData {
   };
 }
 
-//==============================================================================
-// UTILITY FUNCTIONS - Content type detection and helpers
-//==============================================================================
-
-/**
- * Detect a MIME type from a string.
- * Returns one of: "text/html", "application/json", "text/csv", "text/plain".
- * Heuristics (in order): JSON (object/array), HTML, CSV (comma-separated), otherwise plain text.
- * Pure function: no side effects, no globals, no deps.
- * @param {string} input
- * @returns {"text/html"|"application/json"|"text/csv"|"text/plain"}
- */
-function detectMimeType(input) {
-  const s = typeof input === "string" ? input : String(input);
-  const t = s.trim();
-
-  // 1) JSON (only objects/arrays to avoid misclassifying scalars like "42")
-  if (t.startsWith("{") || t.startsWith("[")) {
-    try {
-      JSON.parse(t);
-      return "application/json";
-    } catch (_) {
-      /* not JSON */
-    }
-  }
-
-  // 2) HTML (doctype, common tags, or a paired tag)
-  if (looksLikeHTML(t)) {
-    return "text/html";
-  }
-
-  // 3) CSV (RFC4180-ish heuristic: ≥2 non-empty lines, consistent comma-separated column counts ≥2)
-  if (looksLikeCSV(t)) {
-    return "text/csv";
-  }
-
-  // 4) Fallback
-  return "text/plain";
-
-  //============================================================================
-  // HELPER FUNCTIONS
-  //============================================================================
-
-  /**
-   * Check if a string looks like HTML
-   */
-  function looksLikeHTML(str) {
-    if (!str || str[0] !== "<") return false;
-    if (/^<!doctype\s+html>/i.test(str)) return true;
-    if (
-      /<(html|head|body|script|style|div|span|p|a|ul|ol|li|table|tr|td|section|article|header|footer)\b/i.test(
-        str
-      )
-    ) {
-      return true;
-    }
-    // Generic paired tag: <tag ...> ... </tag>
-    return /<([A-Za-z][\w:-]*)(\s[^>]*)?>[\s\S]*<\/\1>/m.test(str);
-  }
-
-  /**
-   * Check if a string looks like CSV data
-   */
-  function looksLikeCSV(str) {
-    if (!str) return false;
-
-    // Split into non-empty lines and cap the sample size
-    const lines = str.split(/\r?\n/).filter((l) => l.trim() !== "");
-    if (lines.length < 2) return false; // require at least 2 lines
-    const sample = lines.slice(0, 50);
-
-    // Must contain commas somewhere (exclude TSV etc.)
-    if (!sample.some((l) => l.includes(","))) return false;
-
-    // Count columns per line using a minimal CSV splitter that respects quotes
-    const counts = sample.map((l) => splitCsvLine(l).length);
-
-    // Find the most common column count
-    const freq = {};
-    for (const c of counts) freq[c] = (freq[c] || 0) + 1;
-    let modeCount = 0,
-      modeCols = 0;
-    for (const k in freq) {
-      const cols = Number(k),
-        f = freq[k];
-      if (f > modeCount) {
-        modeCount = f;
-        modeCols = cols;
-      }
-    }
-
-    // Consider it CSV if the modal column count is ≥2 and
-    // it covers a clear majority of the sample.
-    if (
-      modeCols >= 2 &&
-      modeCount >= Math.max(2, Math.ceil(sample.length * 0.6))
-    ) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Minimal CSV line splitter (commas, quotes, and escaped quotes "")
-   */
-  function splitCsvLine(line) {
-    const out = [];
-    let cur = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          // Escaped quote
-          cur += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (ch === "," && !inQuotes) {
-        out.push(cur);
-        cur = "";
-      } else {
-        cur += ch;
-      }
-    }
-    out.push(cur);
-    return out;
-  }
-}

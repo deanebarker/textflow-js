@@ -1,6 +1,6 @@
 async function addCss(working, command, p) {
   let css = command.getArg("css");
-  let url = command.getArg("url");
+  const url = command.getArg("url");
   if (url) {
     const res = await fetch(url);
     if (!res.ok) {
@@ -25,7 +25,7 @@ addCss.allowedContentTypes = ["html"];
 addCss.parseValidators = [
   {
     test: (command) => {
-      return command.getArg("css") || command.getArg("url");
+      return command.hasArg("css") || command.hasArg("url");
     },
     message:
       "You must provide a 'css' argument or a 'url' argument with a URL to a CSS file.",

@@ -1,15 +1,18 @@
-function remove(working, command, p) {
-  let selector = command.getArg("selector");
-  if (selector) {
-    // Create a temporary DOM parser
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(working.text, "text/html");
-    const elements = doc.querySelectorAll(selector);
-    elements.forEach((el) => el.remove());
-    return doc.documentElement.outerHTML;
+import { Helpers } from "../textflow.js";
+
+async function remove(working, command) {
+  const selector = command.getArg("selector");
+  if (!selector) {
+    return working.text;
   }
-  return working.text;
+  
+  const doc = await Helpers.parseHtml(working.text);
+  const elements = doc.querySelectorAll(selector);
+  elements.forEach((el) => el.remove());
+  return doc.body.innerHTML;
 }
+
+// Meta
 remove.title = "Remove Element";
 remove.description = "Remove specified element from the working text.";
 remove.args = [
@@ -23,7 +26,7 @@ remove.allowedContentTypes = ["plain", "html", "json", "*"];
 remove.parseValidators = [
   {
     test: (command) => {
-      return command.getArg("selector");
+      return command.hasArg("selector");
     },
     message: "You must provide a CSS selector to remove elements.",
   },

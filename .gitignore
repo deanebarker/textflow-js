@@ -164,6 +164,8 @@ Thumbs.db
 .local
 .env.local
 config.local.js
+webpack.dev.js
+.claude/
 
 # Test output
 test-results/

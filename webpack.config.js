@@ -1,40 +1,62 @@
-const path = require("path");
-const webpack = require("webpack");
+import path from "path";
+import { fileURLToPath } from "url";
+import webpack from "webpack";
 
-// Load environment variables
-require("dotenv").config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-module.exports = {
+const listOutputFilesPlugin = {
+  apply(compiler) {
+    compiler.hooks.afterEmit.tap("ListOutputFiles", (compilation) => {
+      const outPath = compilation.outputOptions.path;
+      console.log("\nFiles written to disk:");
+      for (const filename of Object.keys(compilation.assets)) {
+        console.log("  " + path.join(outPath, filename));
+      }
+    });
+  },
+};
+
+export default {
   mode: "production",
   target: "web",
   entry: "./src/textflow.js",
-  devtool: "source-map",
   module: {
     rules: [
       {
         test: /\.liquid$/i,
         type: "asset/source",
       },
+      {
+        test: /\.json$/,
+        type: "json",
+        exclude: /package\.json$/,
+      },
     ],
   },
-
   output: {
-    // Use environment variable for output path, fallback to dist
-    path: process.env.WEBPACK_OUTPUT_PATH || path.resolve(__dirname, "dist"),
-    filename: "textflow.min.js",
+    path: path.resolve(__dirname, "dist"),
+    filename: "textflow.js",
     module: true,
     chunkFormat: "module",
     library: { type: "module" },
   },
-
+  externalsPresets: {
+    node: false,
+    web: true,
+  },
   experiments: {
     outputModule: true,
   },
-
   optimization: {
     splitChunks: false,
     runtimeChunk: false,
     minimize: true,
   },
-  plugins: [new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })],
+  plugins: [
+    new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^(jsdom|vitest|jest|@testing-library)$/,
+    }),
+    listOutputFilesPlugin,
+  ],
 };

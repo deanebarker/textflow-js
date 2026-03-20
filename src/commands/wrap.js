@@ -1,14 +1,21 @@
-function wrap(working, command, p) {
-  let wrapper = document.createElement(command.getArg("tag,tagName") || "div");
+import { Helpers } from "../textflow.js";
 
-  if (command.getArg("class,className")) {
-    for (const className of command.getArg("class,className").split(" ")) {
+async function wrap(working, command) {
+
+  const tagName = command.getArg("tag,tagName") || "div";
+  const id = command.getArg("id");
+  const classNames = command.getArg("class,className");
+
+  const wrapper = (await Helpers.getDom()).createElement(tagName);
+
+  if (classNames) {
+    for (const className of classNames.split(" ")) {
       wrapper.classList.add(className);
     }
   }
 
-  if (command.getArg("id")) {
-    wrapper.setAttribute("id", command.getArg("id"));
+  if (id) {
+    wrapper.setAttribute("id", id);
   }
 
   wrapper.innerHTML = working.text;
@@ -17,17 +24,26 @@ function wrap(working, command, p) {
     contentType: "text/html",
   };
 }
+
+// Meta
 wrap.title = "Wrap Content";
-wrap.description =
-  "Wrap content in an HTML element with optional class and id attributes.";
+wrap.description = "Wrap content in an HTML element with optional class and id attributes.";
 wrap.args = [
-  { name: "tag", type: "string", description: "HTML tag name (default: div)" },
+  {
+    name: "tag",
+    type: "string",
+    description: "HTML tag name (default: div)"
+  },
   {
     name: "class",
     type: "string",
     description: "CSS class names (space-separated)",
   },
-  { name: "id", type: "string", description: "Element ID" },
+  {
+    name: "id",
+    type: "string",
+    description: "Element ID"
+  },
 ];
 wrap.allowedContentTypes = ["*"];
 wrap.parseValidators = [

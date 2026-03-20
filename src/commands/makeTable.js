@@ -1,7 +1,66 @@
-import { Liquid } from "https://cdn.jsdelivr.net/npm/liquidjs@10.21.1/+esm";
+import { Liquid } from "liquidjs";
+import { Helpers } from "../textflow.js";
 
 async function makeTable(working, command, p) {
-  const defaultTableCss = `
+
+  const target = command.getArg("target,clickTarget"); // Note: clickTarget was an old name for this arg
+
+  // Detect the input and turn it into a array of Maps
+  let data = [];
+  if (Helpers.detectMimeType(working.text).includes("json")) {
+    const json = JSON.parse(working.text);
+    data = json.map((o) => new Map(Object.entries(o)));
+  } else if (Helpers.detectMimeType(working.text).includes("csv")) {
+    data = parseCSVtoMaps(working.text);
+  }
+
+  // Get the column arguments
+  const columnArgPrefix = "col_";
+  let columnArgs = command.arguments
+    .filter((a) => a.key.startsWith(columnArgPrefix))
+    .map((a) => a.key.replace(columnArgPrefix, "").trim());
+  if (columnArgs.length === 0 && data.length > 0) {
+    // No column args, so use all keys from first row
+    columnArgs = Array.from(data[0].keys());
+  }
+
+  // Get the column titles
+  const columnTitles = new Map();
+  for (const col of columnArgs) {
+    columnTitles.set(col, command.getArg(columnArgPrefix + col) ?? col);
+  }
+
+  const html = await mapsToTable(data, columnTitles, target);
+  const css = `<style>${getDefaultTableCss()}</style>`;
+
+  return html.outerHTML + css;
+}
+
+
+// Meta
+
+makeTable.title = "Make Table";
+makeTable.description =
+  "Convert JSON or CSV data into an HTML table with optional column customization.";
+makeTable.args = [
+  {
+    name: "col_*",
+    type: "string",
+    description: "Column titles (e.g., col_name:Full Name)",
+  },
+  {
+    name: "target",
+    type: "string",
+    description: "URL template for clickable rows (uses Liquid templating)",
+  },
+];
+makeTable.allowedContentTypes = ["json", "csv"];
+
+
+// Helpers
+
+function getDefaultTableCss() {
+  return `
 
   table {
   border-collapse: collapse;
@@ -23,63 +82,15 @@ td.numeric,
 th.numeric {
   text-align: right;
 }
-  tr[data-nav] {
+  tr.clickable {
   cursor: pointer;
 }
-tr[data-nav]:hover {
+tr.clickable:hover {
   background-color: rgb(250,250,250);
 }
 `;
-
-  // Turn the input into a array of Maps
-  let data = [];
-  if (working.getContentType().includes("json")) {
-    const json = JSON.parse(working.text);
-    data = json.map((o) => new Map(Object.entries(o)));
-  } else if (working.getContentType().includes("csv")) {
-    data = parseCSVtoMaps(working.text);
-  }
-
-  // Get the column arguments
-  const columnArgPrefix = "col_";
-  let columnArgs = command.arguments
-    .filter((a) => a.key.startsWith(columnArgPrefix))
-    .map((a) => a.key.replace(columnArgPrefix, "").trim());
-  if (columnArgs.length === 0 && data.length > 0) {
-    // No column args, so use all keys from first row
-    columnArgs = Array.from(data[0].keys());
-  }
-
-  // Get the column titles
-  let columnTitles = new Map();
-  for (const col of columnArgs) {
-    columnTitles.set(col, command.getArg(columnArgPrefix + col) ?? col);
-  }
-
-  let clickUrl = command.getArg("clickUrl");
-  let html = await mapsToTable(data, columnTitles, clickUrl);
-  let css = `<style>${defaultTableCss}</style>`;
-  return {
-    text: html.outerHTML + css,
-    contentType: "text/html",
-  };
 }
-makeTable.title = "Make Table";
-makeTable.description =
-  "Convert JSON or CSV data into an HTML table with optional column customization.";
-makeTable.args = [
-  {
-    name: "col_*",
-    type: "string",
-    description: "Column titles (e.g., col_name:Full Name)",
-  },
-  {
-    name: "clickUrl",
-    type: "string",
-    description: "URL template for clickable rows (uses Liquid templating)",
-  },
-];
-makeTable.allowedContentTypes = ["json", "csv"];
+
 
 function parseCSVtoMaps(
   input,
@@ -190,8 +201,9 @@ function parseCSVtoMaps(
  * @param {Map<string, string>} [fieldsMap]
  * @returns {HTMLTableElement}
  */
-async function mapsToTable(rows, fieldsMap, clickUrl) {
-  const table = document.createElement("table");
+async function mapsToTable(rows, fieldsMap, target) {
+  const dom = await Helpers.getDom();
+  const table = dom.createElement("table");
   const thead = table.createTHead();
   const tbody = table.createTBody();
 
@@ -221,7 +233,7 @@ async function mapsToTable(rows, fieldsMap, clickUrl) {
   // Header
   const trh = thead.insertRow();
   for (const col of colMeta) {
-    const th = document.createElement("th");
+    const th = dom.createElement("th");
     th.textContent = col.title;
     th.classList.add(col.className);
     if (col.numeric) th.classList.add("numeric");
@@ -233,16 +245,18 @@ async function mapsToTable(rows, fieldsMap, clickUrl) {
     for (const row of rows) {
       const tr = tbody.insertRow();
 
-      if (clickUrl) {
-        const clickTarget = await engine.parseAndRender(clickUrl, {
+      if (target) {
+
+        tr.classList.add("clickable");
+
+        const clickTarget = engine.parseAndRenderSync(target, {
           row: Object.fromEntries(row),
         });
         tr.setAttribute("onclick", `window.open('${clickTarget}', '_blank')`);
-        tr.dataset.nav = "true";
       }
 
       for (const col of colMeta) {
-        const td = document.createElement("td");
+        const td = dom.createElement("td");
         const v = row.get(col.key);
         td.textContent = v == null ? "" : String(v);
         td.classList.add(col.className);

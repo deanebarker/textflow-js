@@ -1,12 +1,12 @@
 function removeLines(working, command, p) {
-  let linesToRemove = command.getArg("lines");
-  let from = command.getArg("from") || "start";
-  let regex = command.getArg("regex");
+  const linesToRemove = command.getArg("lines");
+  const from = command.getArg("from") || "start";
+  const regex = command.getArg("regex");
 
   let lines = working.text.split("\n");
 
   if (regex) {
-    let pattern = new RegExp(regex);
+    const pattern = new RegExp(regex);
     lines = lines.filter((l) => !pattern.test(l));
   }
 
@@ -43,7 +43,7 @@ removeLines.allowedContentTypes = ["html"];
 removeLines.parseValidators = [
   {
     test: (command) => {
-      if (command.getArg("lines") || command.getArg("regex")) {
+      if (command.hasArg("lines") || command.hasArg("regex")) {
         return true;
       }
       return false;
@@ -53,7 +53,7 @@ removeLines.parseValidators = [
   },
   {
     test: (command) => {
-      let lines = command.getArg("lines");
+      const lines = command.getArg("lines");
       if (isNaN(lines) || lines < 0) return false;
       return true;
     },

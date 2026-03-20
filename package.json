@@ -1,18 +1,25 @@
 {
   "name": "textflow",
   "version": "1.0.0",
-  "main": "embed.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack"
+    "test": "vitest --config ./tests/vitest.config.ts --run",
+    "build": "webpack",
+    "build:dev": "webpack --config webpack.dev.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Deane Barker",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "dotenv": "^17.2.3",
+    "vitest": "^4.1.0",
     "webpack": "^5.101.3",
-    "webpack-cli": "^6.0.1"
+    "webpack-cli": "^6.0.1",
+    "webpack-merge": "^6.0.1"
+  },
+  "dependencies": {
+    "jsdom": "^29.0.0",
+    "jsonata": "^2.1.0",
+    "liquidjs": "^10.25.0",
+    "markdown-it": "^14.1.1"
   }
 }

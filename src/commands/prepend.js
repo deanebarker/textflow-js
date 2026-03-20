@@ -1,5 +1,11 @@
 function prepend(working, command, p) {
-  return command.getArg("text") + working.text;
+  const textToPrepend = command.getArg("text");
+
+  if (!textToPrepend) {
+    return working.text;
+  }
+
+  return textToPrepend + working.text;
 }
 
 // Meta
@@ -17,7 +23,7 @@ prepend.allowedContentTypes = ["plain", "html", "json", "*"];
 prepend.parseValidators = [
   {
     test: (command) => {
-      return command.getArg("text");
+      return command.hasArg("text");
     },
     message: "You must provide text to prepend.",
   },

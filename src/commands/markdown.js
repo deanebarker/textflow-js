@@ -1,4 +1,4 @@
-import markdownit from "https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/+esm";
+import markdownit from "markdown-it";
 
 function markdown(working, command, p) {
   // Use the markdown-it library if available

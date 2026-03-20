@@ -1,5 +1,10 @@
 function append(working, command, p) {
   const textToAppend = command.getArg("text");
+
+  if(!textToAppend) {
+    return working.text;
+  }
+  
   return working.text + textToAppend;
 }
 
@@ -17,7 +22,7 @@ append.allowedContentTypes = ["plain", "html", "json", "*"];
 append.parseValidators = [
   {
     test: (command) => {
-      return command.getArg("text");
+      return command.hasArg("text");
     },
     message: "You must provide text to append.",
   },

@@ -1,7 +1,48 @@
-import {
-  Liquid,
-  Drop,
-} from "https://cdn.jsdelivr.net/npm/liquidjs@10.21.1/+esm";
+import { Liquid, Drop } from "liquidjs";
+import { Helpers } from "../textflow.js";
+
+async function templateHtml(working, command, p) {
+
+  HtmlDomDrop.parser = Helpers.parseHtml;
+
+  let template = command.getArg("template");
+
+  if (template == null && command.getArg("url")) {
+    const response = await fetch(command.getArg("url"));
+    template = await response.text();
+  }
+
+  if (template == null && command.getArg("selector")) {
+    template = document.querySelector(
+      command.getArg("selector")
+    ).innerHTML;
+  }
+
+  const engine = new Liquid();
+  const renderedText = await engine.parseAndRender(template, {
+    data: working.text,
+    html: await HtmlDomDrop.fromHtml(working.text),
+    vars: p.vars
+  });
+  return renderedText;
+}
+
+// Meta
+templateHtml.title = "Template HTML";
+templateHtml.description =
+  "Apply a Liquid template to HTML data with DOM access. Use one of the available arguments to specify where the template source can be found. The entire working data is injected as a string in a variable called 'data', and as a DOM-accessible object in a variable called 'html'.";
+templateHtml.args = [
+  { name: "template", type: "string", description: "Liquid template string" },
+  { name: "url", type: "string", description: "URL to fetch template from" },
+  {
+    name: "selector",
+    type: "string",
+    description: "CSS selector to get template from DOM",
+  },
+];
+templateHtml.allowedContentTypes = ["html"];
+
+// Helpers
 
 class AttrDrop extends Drop {
   constructor(node) {
@@ -21,8 +62,10 @@ class HtmlDomDrop extends Drop {
     this.node = node;
   }
 
-  static fromHtml(html) {
-    const doc = new DOMParser().parseFromString(html, "text/html");
+  static parser;
+
+  static async fromHtml(html) {
+    const doc = await HtmlDomDrop.parser(html);
     return new HtmlDomDrop(doc);
   }
 
@@ -49,41 +92,5 @@ class HtmlDomDrop extends Drop {
     return Array.from(list, (el) => new HtmlDomDrop(el));
   }
 }
-
-async function templateHtml(working, command, p) {
-  let template = command.getArg("template");
-
-  if (command.getArg("url")) {
-    let response = await fetch(command.getArg("url"));
-    template = await response.text();
-  } else if (command.getArg("templateSelector")) {
-    template = document.querySelector(
-      command.getArg("templateSelector")
-    ).innerHTML;
-  }
-
-  const engine = new Liquid();
-  const renderedText = await engine.parseAndRender(template, {
-    data: working.text,
-    html: HtmlDomDrop.fromHtml(working.text),
-  });
-  return {
-    text: renderedText,
-    contentType: "text/html",
-  };
-}
-templateHtml.title = "Template HTML";
-templateHtml.description =
-  "Apply a Liquid template to HTML data with DOM access. Use one of the available arguments to specify where the template source can be found. The entire working data is injected as a string in a variable called 'data', and as a DOM-accessible object in a variable called 'html'.";
-templateHtml.args = [
-  { name: "template", type: "string", description: "Liquid template string" },
-  { name: "url", type: "string", description: "URL to fetch template from" },
-  {
-    name: "templateSelector",
-    type: "string",
-    description: "CSS selector to get template from DOM",
-  },
-];
-templateHtml.allowedContentTypes = ["html"];
 
 export default templateHtml;
