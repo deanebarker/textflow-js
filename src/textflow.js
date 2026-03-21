@@ -26,7 +26,6 @@ import wrapLines from "./commands/wrapLines.js";
 import setAttribute from "./commands/setAttribute.js";
 import outputVars from "./commands/outputVars.js";
 import templateCsv from "./commands/templateCsv.js";
-import stripHyperlinks from "./commands/stripHyperlinks.js";
 
 import debugTemplate from "./templates/debug.liquid";
 
@@ -103,7 +102,6 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("prepend", prepend);
     Pipeline.staticCommandLib.set("append", append);
     Pipeline.staticCommandLib.set("remove", remove);
-    Pipeline.staticCommandLib.set("strip-hyperlinks", stripHyperlinks);
     Pipeline.staticCommandLib.set("remove-lines", removeLines);
     Pipeline.staticCommandLib.set("wrap-lines", wrapLines);
     Pipeline.staticCommandLib.set("set-attribute", setAttribute);
