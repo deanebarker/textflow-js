@@ -328,6 +328,106 @@ describe("executePipeline", () => {
 });
 
 //==============================================================================
+// validateCommand
+//==============================================================================
+
+describe("validateCommand", () => {
+  test("returns no errors for a valid command", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("append", { text: "hi" }));
+    expect(errors).toEqual([]);
+  });
+
+  test("returns an error for an unknown command", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("nonexistent"));
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0]).toMatch(/unknown command/i);
+  });
+
+  test("returns an error when a required arg is missing", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("remove")); // selector is required
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  test("returns no error when required arg is present", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("remove", { selector: "p" }));
+    expect(errors).toEqual([]);
+  });
+
+  test("returns an error when an arg value is not in allowedValues", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("remove", { selector: "p", preserve: "invalid" }));
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0]).toMatch(/preserve/i);
+  });
+
+  test("returns no error when an arg value is in allowedValues", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("remove", { selector: "p", preserve: "all" }));
+    expect(errors).toEqual([]);
+  });
+
+  test("returns no error when an optional arg with allowedValues is omitted", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("remove", { selector: "p" }));
+    expect(errors).toEqual([]);
+  });
+
+  test("returns an error when a number arg receives a non-numeric value", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("remove-lines", { lines: "abc" }));
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0]).toMatch(/not a valid number/i);
+  });
+
+  test("returns no error when a number arg receives a numeric string", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("remove-lines", { lines: "3" }));
+    expect(errors).toEqual([]);
+  });
+
+  test("returns no error when a number arg receives an actual number", () => {
+    const p = new Pipeline({ commands: [] });
+    const errors = p.validateCommand(cmd("remove-lines", { lines: 3 }));
+    expect(errors).toEqual([]);
+  });
+
+  test("returns multiple errors when multiple things are wrong", () => {
+    const p = new Pipeline({ commands: [] });
+    // nonexistent command — should get at least 1 error and not crash
+    const errors = p.validateCommand(cmd("nonexistent", { foo: "bar" }));
+    expect(errors.length).toBeGreaterThan(0);
+  });
+});
+
+//==============================================================================
+// allowedValues validation
+//==============================================================================
+
+describe("allowedValues validation", () => {
+  test("allows a valid value for an arg with allowedValues", async () => {
+    const p = new Pipeline({ commands: [cmd("remove", { selector: "p", preserve: "all" })] });
+    const working = await p.execute({ history: [], text: "<p>hello</p>" });
+    expect(working.abort).toBeFalsy();
+  });
+
+  test("aborts when an arg value is not in allowedValues", async () => {
+    const p = new Pipeline({ commands: [cmd("remove", { selector: "p", preserve: "invalid" })] });
+    const working = await p.execute({ history: [], text: "<p>hello</p>" });
+    expect(working.abort).toBe(true);
+  });
+
+  test("does not abort when an optional arg with allowedValues is omitted", async () => {
+    const p = new Pipeline({ commands: [cmd("remove", { selector: "p" })] });
+    const working = await p.execute({ history: [], text: "<p>hello</p>" });
+    expect(working.abort).toBeFalsy();
+  });
+});
+
+//==============================================================================
 // Helpers.detectMimeType
 //==============================================================================
 

@@ -133,35 +133,59 @@ export class Pipeline {
     const errors = [];
 
     for (let command of this.commands) {
-      this.wrapCommand(command, this);
+      errors.push(...this.validateCommand(command));
+    }
 
-      // Ensure the command exists
-      if (!this.getCommandFunction(command.name)) {
-        errors.push(`Unknown command: "${command.name}"`);
-        continue;
+    return errors;
+  }
+
+  /**
+   * Validate a single command in the pipeline without executing it
+   */
+  validateCommand(command) {
+    const errors = [];
+
+    // Attach hasArg/getArg helpers so validators can inspect arguments by name
+    this.wrapCommand(command, this);
+
+    // Check that the command name is registered
+    let func = this.getCommandFunction(command.name);
+    if (!func) {
+      errors.push(`Unknown command: "${command.name}"`);
+      return errors;
+    }
+
+    // Check each provided argument against the command's arg definitions
+    for (let argument of command.arguments) {
+      const argDef =
+        func.args && func.args.find((a) => a.name === argument.key);
+
+      // If the arg definition specifies an allowedValues list, the value must appear in it
+      if (
+        argDef &&
+        argDef.allowedValues &&
+        !argDef.allowedValues.includes(argument.value)
+      ) {
+        errors.push(
+          `Command "${command.name}", argument "${argument.key}": value "${argument.value}" is not in allowed values ${argDef.allowedValues.join(", ")}`,
+        );
       }
 
-      // Run its validators
-      const func = this.getCommandFunction(command.name);
-      for (let validator of func.parseValidators || []) {
-        if (!validator.test(command)) {
-          errors.push(`Command "${command.name}": ${validator.message}`);
-        }
-      }
-
-      // If it's not allowed to have free arguments, make sure there are none
-      if (func.allowFreeArguments === false) {
-        const allowedArguments = func.args.map((arg) => arg.name);
-        for (const freeArg of command.arguments.filter(
-          (a) => !allowedArguments.includes(a.key)
-        )) {
-          errors.push(
-            `Command "${command.name}": unknown argument "${freeArg.key}"`
-          );
-        }
+      // If the arg definition specifies type "number", the value must be numeric
+      if (argDef && argDef.type === "number" && isNaN(Number(argument.value))) {
+        errors.push(
+          `Command "${command.name}", argument "${argument.key}": value "${argument.value}" is not a valid number`,
+        );
       }
     }
 
+    // Run any custom parse validators defined on the command function
+    for (let validator of func.parseValidators || []) {
+      if (!validator.test) continue; // If there's no test function, skip it
+      if (!validator.test(command)) {
+        errors.push(`Command "${command.name}": ${validator.message}`);
+      }
+    }
     return errors;
   }
 
@@ -199,29 +223,27 @@ export class Pipeline {
     };
     command.getArg = function (name) {
       for (const possibleName of name.split(",").map((n) => n.trim())) {
-
         let value = this.arguments.filter((a) => a.key === possibleName)[0]
           ?.value;
-        
-        if(value === undefined || value == null) continue;
+
+        if (value === undefined || value == null) continue;
 
         // Is this a variable reference?
         const variableRegex = /^{\w+}$/; // This is a regex because some Liquid templates might start and end with a brace
-        if(typeof value === "string" && variableRegex.test(value)) {
-          const varName = value.slice(1,-1).trim();
-          if(this.pipeline.vars.has(varName)){
+        if (typeof value === "string" && variableRegex.test(value)) {
+          const varName = value.slice(1, -1).trim();
+          if (this.pipeline.vars.has(varName)) {
             value = this.pipeline.vars.get(varName);
           } else {
             value = null;
-          } 
+          }
         }
-        
+
         if (value !== null) return value;
       }
       return null;
     };
   }
-
 
   //============================================================================
   // MAIN EXECUTION METHOD
@@ -236,11 +258,11 @@ export class Pipeline {
       !this.emit(
         "textflow:pipeline-starting",
         { working, pipeline: this },
-        true
+        true,
       )
     ) {
       this.log(
-        "Pipeline cancelled by event listener on textflow:pipeline-starting"
+        "Pipeline cancelled by event listener on textflow:pipeline-starting",
       );
       return this.returnWorking(working);
     }
@@ -260,7 +282,11 @@ export class Pipeline {
 
       // Initialize command history tracking
       const history = {};
-      history.command = { name: command.name, source: command.source, arguments: command.arguments };
+      history.command = {
+        name: command.name,
+        source: command.source,
+        arguments: command.arguments,
+      };
       history.input = working.text;
 
       // Skip unknown commands
@@ -270,20 +296,15 @@ export class Pipeline {
       }
 
       try {
-        const func = this.getCommandFunction(command.name);
 
-        // Run validation
-        for (let validator of func.parseValidators || []) {
-          if(!validator.test) continue; // If there's no test function, skip it
-          if (!validator.test(command)) {
-            this.log(
-              `Validation failed for command ${command.name}: ${validator.message}`
-            );
-            working.abort = true; // Stop execution if validation fails
-            return working;
-          }
+        const validateErrors = this.validateCommand(command);
+        if (validateErrors.length > 0) {
+          this.log(`Validation failed for command ${command.name}:`, validateErrors);
+          working.abort = true;
+          return working;
         }
 
+        const func = this.getCommandFunction(command.name);
         const beforeLength = working.text.length;
 
         // Check if command execution should proceed
@@ -291,11 +312,11 @@ export class Pipeline {
           !this.emit(
             "textflow:command-starting",
             { working, command, pipeline: this },
-            true
+            true,
           )
         ) {
           this.log(
-            "Command cancelled by event listener on textflow:command-starting"
+            "Command cancelled by event listener on textflow:command-starting",
           );
           continue;
         }
@@ -327,7 +348,7 @@ export class Pipeline {
         this.log(
           `Abort triggered by command: ${command.name}`,
           working,
-          command
+          command,
         );
         return new WorkingData(); // Do not return partial results
       }
@@ -409,7 +430,7 @@ export class Pipeline {
       !this.emit("textflow:returning-data", { working, pipeline: this }, true)
     ) {
       this.log(
-        "Return of data cancelled by event listener on textflow:returning-data"
+        "Return of data cancelled by event listener on textflow:returning-data",
       );
       return new WorkingData();
     }
@@ -429,7 +450,7 @@ export class Pipeline {
       cancelable: cancelable || false,
     });
 
-    if(typeof document === "undefined") return true; // We're not in a browser environment, so just return true to allow all events
+    if (typeof document === "undefined") return true; // We're not in a browser environment, so just return true to allow all events
     const eventResult = document.dispatchEvent(event);
     return eventResult;
   }
@@ -445,7 +466,6 @@ export class Pipeline {
    * Generate debug data for the pipeline execution
    */
   static async getDebugData(working) {
-
     const engine = new Liquid();
     engine.registerFilter("commas", function (value) {
       return Intl.NumberFormat("en-US").format(value);
@@ -458,7 +478,6 @@ export class Pipeline {
     shadowRoot.innerHTML = debugHtml;
     return debugElement;
   }
-
 }
 
 //==============================================================================

@@ -35,6 +35,7 @@ remove.args = [
     type: "string",
     optional: true,
     description: "What to preserve from removed elements: 'all' keeps inner HTML (including nested tags), 'text' keeps only text content.",
+    allowedValues: ["all", "text"],
   },
 ];
 remove.allowedContentTypes = ["plain", "html", "json", "*"];
@@ -44,13 +45,6 @@ remove.parseValidators = [
       return command.hasArg("selector");
     },
     message: "You must provide a CSS selector to remove elements.",
-  },
-  {
-    test: (command) => {
-      const preserve = command.getArg("preserve");
-      return !preserve || preserve === "all" || preserve === "text";
-    },
-    message: "The 'preserve' argument must be 'all' or 'text'.",
   },
 ];
 

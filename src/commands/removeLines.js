@@ -32,6 +32,7 @@ removeLines.args = [
     name: "from",
     type: "string",
     description: "The direction to remove lines from (start or end).",
+    allowedValues: ["start", "end"],
   },
   {
     name: "regex",
