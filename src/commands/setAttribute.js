@@ -14,7 +14,7 @@ async function setAttribute(working, command) {
     return working;
   }
 
-  const targets = limit > 0 ? elements.slice(0, limit) : elements.slice(0, 1);
+  const targets = limit === 0 ? elements : elements.slice(0, limit);
   targets.forEach((el) => el.setAttribute(attr, value));
   return doc.body.innerHTML;
 
@@ -43,7 +43,7 @@ setAttribute.args = [
   {
     name: "limit",
     type: "number",
-    description: "Maximum number of matching elements to update. Defaults to 1.",
+    description: "Maximum number of matching elements to update. If not set (or if set to 0), all matching elements will be updatedgot add -git add ..",
   },
 ];
 
