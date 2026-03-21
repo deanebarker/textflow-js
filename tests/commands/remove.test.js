@@ -48,3 +48,27 @@ test("Doesn't remove anything with an undefined selector", async () => {
   const result = await execute([command], "a<p>b</p>c");
   expect(result.text).toBe("a<p>b</p>c");
 });
+
+test("Preserves all inner content with preserve='all'", async () => {
+  let command = { name: "remove", selector: "p", preserve: "all" };
+  const result = await execute([command], "a<p>b<span>c</span></p>d");
+  expect(result.text).toBe("ab<span>c</span>d");
+});
+
+test("Preserves only text content with preserve='text'", async () => {
+  let command = { name: "remove", selector: "p", preserve: "text" };
+  const result = await execute([command], "a<p>b<span>c</span></p>d");
+  expect(result.text).toBe("abcd");
+});
+
+test("Preserves all content for multiple elements with preserve='all'", async () => {
+  let command = { name: "remove", selector: "p", preserve: "all" };
+  const result = await execute([command], "<p>a</p><p>b</p>");
+  expect(result.text).toBe("ab");
+});
+
+test("Preserves text for multiple elements with preserve='text'", async () => {
+  let command = { name: "remove", selector: "p", preserve: "text" };
+  const result = await execute([command], "<p>a<span>b</span></p><p>c</p>");
+  expect(result.text).toBe("abc");
+});

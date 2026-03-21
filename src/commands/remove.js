@@ -5,10 +5,19 @@ async function remove(working, command) {
   if (!selector) {
     return working.text;
   }
-  
+
+  const preserve = command.getArg("preserve");
   const doc = await Helpers.parseHtml(working.text);
   const elements = doc.querySelectorAll(selector);
-  elements.forEach((el) => el.remove());
+  elements.forEach((el) => {
+    if (preserve === "all") {
+      el.replaceWith(...el.childNodes);
+    } else if (preserve === "text") {
+      el.replaceWith(el.textContent);
+    } else {
+      el.remove();
+    }
+  });
   return doc.body.innerHTML;
 }
 
@@ -21,6 +30,12 @@ remove.args = [
     type: "string",
     description: "CSS selector for the element(s) to remove.",
   },
+  {
+    name: "preserve",
+    type: "string",
+    optional: true,
+    description: "What to preserve from removed elements: 'all' keeps inner HTML (including nested tags), 'text' keeps only text content.",
+  },
 ];
 remove.allowedContentTypes = ["plain", "html", "json", "*"];
 remove.parseValidators = [
@@ -29,6 +44,13 @@ remove.parseValidators = [
       return command.hasArg("selector");
     },
     message: "You must provide a CSS selector to remove elements.",
+  },
+  {
+    test: (command) => {
+      const preserve = command.getArg("preserve");
+      return !preserve || preserve === "all" || preserve === "text";
+    },
+    message: "The 'preserve' argument must be 'all' or 'text'.",
   },
 ];
 
