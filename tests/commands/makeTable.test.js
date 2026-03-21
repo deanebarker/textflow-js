@@ -46,3 +46,34 @@ test("Includes a style block in the output", async () => {
   const result = await execute([command], '[{"x": 1}]');
   expect(result.text).toContain("<style>");
 });
+
+test("Hides a column from display when specified in hide argument", async () => {
+  let command = { name: "make-table", hide: "age" };
+  const result = await execute([command], '[{"name": "Alice", "age": 30}]');
+  expect(result.text).toContain("name");
+  expect(result.text).not.toContain("age");
+});
+
+test("Hides multiple columns when comma-separated in hide argument", async () => {
+  let command = { name: "make-table", hide: "age, score" };
+  const result = await execute([command], '[{"name": "Alice", "age": 30, "score": 99}]');
+  expect(result.text).toContain("name");
+  expect(result.text).not.toContain("age");
+  expect(result.text).not.toContain("score");
+});
+
+test("Hides columns matching hide-pattern regex", async () => {
+  let command = { name: "make-table", "hide-pattern": "^_" };
+  const result = await execute([command], '[{"name": "Alice", "_id": 1, "_rev": 2}]');
+  expect(result.text).toContain("name");
+  expect(result.text).not.toContain("_id");
+  expect(result.text).not.toContain("_rev");
+});
+
+test("hide and hide-pattern can be used simultaneously", async () => {
+  let command = { name: "make-table", hide: "age", "hide-pattern": "^_" };
+  const result = await execute([command], '[{"name": "Alice", "age": 30, "_id": 1}]');
+  expect(result.text).toContain("name");
+  expect(result.text).not.toContain("age");
+  expect(result.text).not.toContain("_id");
+});

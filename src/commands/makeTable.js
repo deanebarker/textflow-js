@@ -24,10 +24,20 @@ async function makeTable(working, command, p) {
     columnArgs = Array.from(data[0].keys());
   }
 
-  // Get the column titles
+  // Parse hidden columns
+  const hideArg = command.getArg("hide");
+  const hidePatternArg = command.getArg("hide-pattern");
+  const hidePattern = hidePatternArg ? new RegExp(hidePatternArg) : null;
+  const hiddenColumns = hideArg
+    ? new Set(hideArg.split(",").map((s) => s.trim()))
+    : new Set();
+
+  // Get the column titles (excluding hidden columns)
   const columnTitles = new Map();
   for (const col of columnArgs) {
-    columnTitles.set(col, command.getArg(columnArgPrefix + col) ?? col);
+    if (!hiddenColumns.has(col) && !(hidePattern && hidePattern.test(col))) {
+      columnTitles.set(col, command.getArg(columnArgPrefix + col) ?? col);
+    }
   }
 
   const html = await mapsToTable(data, columnTitles, target);
@@ -47,6 +57,16 @@ makeTable.args = [
     name: "col_*",
     type: "string",
     description: "Column titles (e.g., col_name:Full Name)",
+  },
+  {
+    name: "hide",
+    type: "string",
+    description: "Comma-separated list of column keys to hide from display",
+  },
+  {
+    name: "hide-pattern",
+    type: "string",
+    description: "Regex pattern to match column keys to hide from display",
   },
   {
     name: "target",
