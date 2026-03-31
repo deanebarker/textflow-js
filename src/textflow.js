@@ -7,16 +7,12 @@ import setDebug from "./commands/setDebug.js";
 import noOp from "./commands/noOp.js";
 import absolutize from "./commands/absolutize.js";
 import jsonataQuery from "./commands/jsonata.js";
-import setContainerStyles from "./commands/setContainerStyles.js";
 import http from "./commands/http.js";
 import addCss from "./commands/addCss.js";
 import extract from "./commands/extract.js";
 import wrap from "./commands/wrap.js";
 import templateJson from "./commands/templateJson.js";
-import templateHtml from "./commands/templateHtml.js";
 import newLines from "./commands/newLines.js";
-import markdown from "./commands/markdown.js";
-import forceType from "./commands/forceType.js";
 import makeTable from "./commands/makeTable.js";
 import prepend from "./commands/prepend.js";
 import append from "./commands/append.js";
@@ -24,12 +20,14 @@ import remove from "./commands/remove.js";
 import removeLines from "./commands/removeLines.js";
 import wrapLines from "./commands/wrapLines.js";
 import setAttribute from "./commands/setAttribute.js";
-import outputVars from "./commands/outputVars.js";
-import templateCsv from "./commands/templateCsv.js";
+import csvToJson from "./commands/csvToJson.js";
+import htmlTableToJson from "./commands/htmlTableToJson.js";
+import raiseEvent from "./commands/raiseEvent.js";
 
 import debugTemplate from "./templates/debug.liquid";
 
 import { Liquid } from "liquidjs";
+import { detectMimeType } from "./helpers.js";
 
 //==============================================================================
 // PUBLIC API FUNCTIONS
@@ -76,6 +74,7 @@ export class Pipeline {
 
   vars = new Map(); // Variables for this pipeline execution
 
+  static onLog = null; // Optional callback for log messages: (args) => void
   static staticCommandLib = new Map(); // Commands available to all Pipeline instances
   instanceCommandLib = new Map(); // Commands specific to this instance
 
@@ -90,13 +89,9 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("template-json", templateJson);
     Pipeline.staticCommandLib.set("make-table", makeTable);
     Pipeline.staticCommandLib.set("new-lines", newLines);
-    Pipeline.staticCommandLib.set("markdown", markdown);
     Pipeline.staticCommandLib.set("http", http);
     Pipeline.staticCommandLib.set("add-css", addCss);
-    Pipeline.staticCommandLib.set("set-container-styles", setContainerStyles);
     Pipeline.staticCommandLib.set("jsonata", jsonataQuery);
-    Pipeline.staticCommandLib.set("template-html", templateHtml);
-    Pipeline.staticCommandLib.set("set-type", forceType);
     Pipeline.staticCommandLib.set("set-debug", setDebug);
     Pipeline.staticCommandLib.set("no-op", noOp);
     Pipeline.staticCommandLib.set("prepend", prepend);
@@ -105,8 +100,9 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("remove-lines", removeLines);
     Pipeline.staticCommandLib.set("wrap-lines", wrapLines);
     Pipeline.staticCommandLib.set("set-attribute", setAttribute);
-    Pipeline.staticCommandLib.set("output-vars", outputVars);
-    Pipeline.staticCommandLib.set("template-csv", templateCsv);
+    Pipeline.staticCommandLib.set("csv-to-json", csvToJson);
+    Pipeline.staticCommandLib.set("table-to-json", htmlTableToJson);
+    Pipeline.staticCommandLib.set("raise-event", raiseEvent);
   }
 
   //============================================================================
@@ -114,6 +110,13 @@ export class Pipeline {
   //============================================================================
 
   constructor(commandSet) {
+    if (!commandSet || typeof commandSet !== "object") {
+      throw new Error("Pipeline constructor requires a commandSet object");
+    }
+    if (!Array.isArray(commandSet.commands)) {
+      throw new Error("Pipeline constructor requires commandSet.commands to be an array");
+    }
+
     this.commands = commandSet.commands;
     this.debug = this.commands.filter((c) => c.name === "set-debug").length > 0;
     this.commands = this.commands.filter((c) => c.name !== "set-debug");
@@ -149,13 +152,18 @@ export class Pipeline {
     this.wrapCommand(command, this);
 
     // Check that the command name is registered
-    let func = this.getCommandFunction(command.name);
+    const func = this.getCommandFunction(command.name);
     if (!func) {
       errors.push(`Unknown command: "${command.name}"`);
       return errors;
     }
 
     // Check each provided argument against the command's arg definitions
+    if (!Array.isArray(command.arguments)) {
+      errors.push(`Command "${command.name}": arguments must be an array`);
+      return errors;
+    }
+
     for (let argument of command.arguments) {
       const argDef =
         func.args && func.args.find((a) => a.name === argument.key);
@@ -226,7 +234,7 @@ export class Pipeline {
         let value = this.arguments.filter((a) => a.key === possibleName)[0]
           ?.value;
 
-        if (value === undefined || value == null) continue;
+        if (value == null) continue;
 
         // Is this a variable reference?
         const variableRegex = /^{\w+}$/; // This is a regex because some Liquid templates might start and end with a brace
@@ -235,6 +243,7 @@ export class Pipeline {
           if (this.pipeline.vars.has(varName)) {
             value = this.pipeline.vars.get(varName);
           } else {
+            this.pipeline.log(`Warning: Variable "{${varName}}" referenced in command "${this.name}" but not found in pipeline vars`);
             value = null;
           }
         }
@@ -253,6 +262,12 @@ export class Pipeline {
    * Execute the pipeline on working data
    */
   async execute(working) {
+
+    // If working is a string, convert it to a WorkingData object
+    if (typeof working === "string") {
+      working = new WorkingData(working);
+    }
+
     // Check if pipeline execution should start
     if (
       !this.emit(
@@ -270,6 +285,11 @@ export class Pipeline {
     const pipelineStart = performance.now();
     const initialInput = working.text;
 
+    // Validate command arrays before execution
+    if (!Array.isArray(this.headCommands) || !Array.isArray(this.commands) || !Array.isArray(this.tailCommands)) {
+      throw new Error("Pipeline execution failed: command arrays are not properly initialized");
+    }
+
     // Execute all commands in order
     for (let command of [
       ...this.headCommands,
@@ -278,7 +298,7 @@ export class Pipeline {
     ]) {
       this.wrapCommand(command, this);
 
-      this.log(`Executing: ${command.name}`, working.text, command.arguments);
+      this.log(`Executing: ${command.name}`, command.arguments);
 
       // Initialize command history tracking
       const history = {};
@@ -289,10 +309,11 @@ export class Pipeline {
       };
       history.input = working.text;
 
-      // Skip unknown commands
+      // Check for unknown commands before execution
       if (!this.getCommandFunction(command.name)) {
-        this.log(`Unknown command: ${command.name}`);
-        continue;
+        const errorMsg = `Unknown command: "${command.name}". Available commands: ${Array.from(Pipeline.staticCommandLib.keys()).join(", ")}`;
+        this.log(errorMsg);
+        continue; // Skip unknown commands and continue to the next one
       }
 
       try {
@@ -305,6 +326,9 @@ export class Pipeline {
         }
 
         const func = this.getCommandFunction(command.name);
+        if (working.text === null || working.text === undefined) {
+          throw new Error(`Command "${command.name}" execution failed: working text is null or undefined`);
+        }
         const beforeLength = working.text.length;
 
         // Check if command execution should proceed
@@ -325,6 +349,14 @@ export class Pipeline {
         const start = performance.now();
         const commandResult = await func(working, command, this);
 
+        // Validate command result before processing
+        if (commandResult !== null && commandResult !== undefined) {
+          const resultType = typeof commandResult;
+          if (resultType !== "string" && resultType !== "object") {
+            this.log(`Warning: Command "${command.name}" returned unexpected type "${resultType}". Expected string or object.`);
+          }
+        }
+
         // Handle different return types from commands
         this.processCommandResult(working, commandResult);
 
@@ -339,7 +371,11 @@ export class Pipeline {
         history.delta = working.text.length - beforeLength;
         history.output = working.text;
       } catch (ex) {
-        this.log(`Error in command ${command.name}: ${ex.message}`);
+        const errorMessage = ex instanceof Error ? ex.message : String(ex);
+        this.log(`Error in command "${command.name}": ${errorMessage}`);
+        if (this.debug && ex instanceof Error && ex.stack) {
+          this.log(`Stack trace: ${ex.stack}`);
+        }
         working.abort = true;
       }
 
@@ -445,164 +481,59 @@ export class Pipeline {
    * Emit a custom event when running in a browser
    */
   emit(type, detail, cancelable) {
-    const event = new CustomEvent(type, {
-      detail,
-      cancelable: cancelable || false,
-    });
+    try {
+      if (typeof document === "undefined") return true; // We're not in a browser environment, so just return true to allow all events
 
-    if (typeof document === "undefined") return true; // We're not in a browser environment, so just return true to allow all events
-    const eventResult = document.dispatchEvent(event);
-    return eventResult;
+      const event = new CustomEvent(type, {
+        detail,
+        cancelable: cancelable || false,
+      });
+
+      const eventResult = document.dispatchEvent(event);
+      return eventResult;
+    } catch (error) {
+      this.log(`Warning: Error during event emission for "${type}": ${error.message}`);
+      return true; // Return true to allow pipeline to continue
+    }
   }
 
   /**
    * Log messages if debug mode is enabled
    */
   log(...args) {
-    if (this.debug) console.log([...args]);
+    if (this.debug) console.log(...args);
+    if (Pipeline.onLog) Pipeline.onLog(args);
   }
 
   /**
    * Generate debug data for the pipeline execution
    */
   static async getDebugData(working) {
-    const engine = new Liquid();
-    engine.registerFilter("commas", function (value) {
-      return Intl.NumberFormat("en-US").format(value);
-    });
-    const debugHtml = await engine.parseAndRenderSync(debugTemplate, {
-      history: working.history,
-    });
-    const debugElement = document.createElement("debug-data");
-    const shadowRoot = debugElement.attachShadow({ mode: "open" });
-    shadowRoot.innerHTML = debugHtml;
-    return debugElement;
-  }
-}
-
-//==============================================================================
-// HELPERS CLASS - DOM utility methods for browser and Node.js environments
-//==============================================================================
-
-export class Helpers {
-  static async parseHtml(html) {
-    if (typeof window !== "undefined") {
-      return new DOMParser().parseFromString(html, "text/html");
-    } else {
-      const { JSDOM } = await import('jsdom');
-      const dom = new JSDOM(html);
-      return dom.window.document;
-    }
-  }
-
-  static async getDom() {
-    if (typeof window !== "undefined") {
-      return document;
-    } else {
-      const { JSDOM } = await import('jsdom');
-      const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>");
-      return dom.window.document;
-    }
-  }
-
-  static detectMimeType(input) {
-    const s = typeof input === "string" ? input : String(input);
-    const t = s.trim();
-
-    // 1) JSON (only objects/arrays to avoid misclassifying scalars like "42")
-    if (t.startsWith("{") || t.startsWith("[")) {
-      try {
-        JSON.parse(t);
-        return "application/json";
-      } catch (_) {
-        /* not JSON */
-      }
-    }
-
-    // 2) HTML (doctype, common tags, or a paired tag)
-    if (looksLikeHTML(t)) {
-      return "text/html";
-    }
-
-    // 3) CSV (RFC4180-ish heuristic: ≥2 non-empty lines, consistent comma-separated column counts ≥2)
-    if (looksLikeCSV(t)) {
-      return "text/csv";
-    }
-
-    // 4) Fallback
-    return "text/plain";
-
-    function looksLikeHTML(str) {
-      if (!str || str[0] !== "<") return false;
-      if (/^<!doctype\s+html>/i.test(str)) return true;
-      if (
-        /<(html|head|body|script|style|div|span|p|a|ul|ol|li|table|tr|td|section|article|header|footer)\b/i.test(
-          str
-        )
-      ) {
-        return true;
-      }
-      return /<([A-Za-z][\w:-]*)(\s[^>]*)?>[\s\S]*<\/\1>/m.test(str);
-    }
-
-    function looksLikeCSV(str) {
-      if (!str) return false;
-
-      const lines = str.split(/\r?\n/).filter((l) => l.trim() !== "");
-      if (lines.length < 2) return false;
-      const sample = lines.slice(0, 50);
-
-      if (!sample.some((l) => l.includes(","))) return false;
-
-      const counts = sample.map((l) => splitCsvLine(l).length);
-
-      const freq = {};
-      for (const c of counts) freq[c] = (freq[c] || 0) + 1;
-      let modeCount = 0,
-        modeCols = 0;
-      for (const k in freq) {
-        const cols = Number(k),
-          f = freq[k];
-        if (f > modeCount) {
-          modeCount = f;
-          modeCols = cols;
-        }
+    try {
+      if (typeof document === "undefined") {
+        throw new Error("Debug data generation requires a browser environment with document object");
       }
 
-      if (
-        modeCols >= 2 &&
-        modeCount >= Math.max(2, Math.ceil(sample.length * 0.6))
-      ) {
-        return true;
+      const engine = new Liquid();
+      engine.registerFilter("commas", function (value) {
+        return Intl.NumberFormat("en-US").format(value);
+      });
+
+      const debugHtml = await engine.parseAndRenderSync(debugTemplate, {
+        history: working.history,
+      });
+
+      const debugElement = document.createElement("debug-data");
+      if (!debugElement.attachShadow) {
+        throw new Error("Failed to create shadow DOM: element does not support attachShadow");
       }
 
-      return false;
-    }
-
-    function splitCsvLine(line) {
-      const out = [];
-      let cur = "";
-      let inQuotes = false;
-
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-
-        if (ch === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            cur += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (ch === "," && !inQuotes) {
-          out.push(cur);
-          cur = "";
-        } else {
-          cur += ch;
-        }
-      }
-      out.push(cur);
-      return out;
+      const shadowRoot = debugElement.attachShadow({ mode: "open" });
+      shadowRoot.innerHTML = debugHtml;
+      return debugElement;
+    } catch (error) {
+      console.error("Debug data generation failed:", error.message);
+      throw error;
     }
   }
 }
@@ -638,7 +569,7 @@ class WorkingData {
     const type = this.contentType || this.contentTypeByExtension[this.extension];
     if (type) return type;
 
-    return Helpers.detectMimeType(this.text);
+    return detectMimeType(this.text);
   }
 
   /**

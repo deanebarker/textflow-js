@@ -1,4 +1,4 @@
-import { Helpers } from "../textflow.js";
+import { parseHtml } from "../helpers.js";
 
 async function extract(working, command) {
 
@@ -7,7 +7,7 @@ async function extract(working, command) {
   const limit = Number(command.getArg("limit")) || 0;
   const join = command.getArg("join") || "\n";
 
-  const doc = await Helpers.parseHtml(working.text);
+  const doc = await parseHtml(working.text);
 
   // Get the elements
   let results = Array.from(doc.querySelectorAll(selector));
@@ -19,11 +19,11 @@ async function extract(working, command) {
 
   // Extract the correct string based on the scope
   results = results.map((element) => {
-    if (scope == "inner") {
+    if (scope === "inner") {
       return element.innerHTML;
-    } else if (scope == "outer") {
+    } else if (scope === "outer") {
       return element.outerHTML;
-    } else if (scope == "text") {
+    } else if (scope === "text") {
       return element.textContent;
     } else if (scope && scope.startsWith("@")) {
       // QUESTION: do we filter for limit before or after we determine that attributes might be null? Do nulls count toward the limit?

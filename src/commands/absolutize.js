@@ -1,29 +1,20 @@
-import { Helpers } from "../textflow";
+import { parseHtml } from "../helpers.js";
 
 async function absolutize(working, command, p) {
-  
+
   const url = command.getArg("url") ?? working.source;
 
-  const doc = await Helpers.parseHtml(working.text);
+  const doc = await parseHtml(working.text);
 
   // Resolve links
   doc.querySelectorAll("a[href]").forEach((a) => {
-    a.setAttribute("href", resolveUrl(a.getAttribute("href")));
+    a.setAttribute("href", resolveUrl(a.getAttribute("href"), url));
   });
 
   // Resolve images
   doc.querySelectorAll("img[src]").forEach((img) => {
-    img.setAttribute("src", resolveUrl(img.getAttribute("src")));
+    img.setAttribute("src", resolveUrl(img.getAttribute("src"), url));
   });
-
-    // Helper to resolve a URL
-  function resolveUrl(relative) {
-    try {
-      return new URL(relative, url).href;
-    } catch {
-      return relative; // leave it unchanged if it's not a valid URL
-    }
-  }
 
   // Serialize DOM back to string
   return doc.body.innerHTML;
@@ -48,19 +39,28 @@ absolutize.parseValidators = [
         return false;
       }
       return true;
-
-      function isAbsoluteUrl(str) {
-        try {
-          new URL(str.trim()); // no base ⇒ throws on relative inputs
-          return true;
-        } catch {
-          return false;
-        }
-      }
-      
     },
     message: "If you provide a URL, it must be an absolute URL.",
   },
 ];
 
-export default absolutize
+// Helpers
+
+function resolveUrl(relative, baseUrl) {
+  try {
+    return new URL(relative, baseUrl).href;
+  } catch {
+    return relative; // leave it unchanged if it's not a valid URL
+  }
+}
+
+function isAbsoluteUrl(str) {
+  try {
+    new URL(str.trim()); // no base ⇒ throws on relative inputs
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export default absolutize;

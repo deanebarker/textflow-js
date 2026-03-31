@@ -35,10 +35,14 @@ export default {
   },
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "textflow.js",
+    filename: "textflow.min.js",
     module: true,
     chunkFormat: "module",
     library: { type: "module" },
+  },
+  externals: {
+    jsdom: 'jsdom', // Exclude jsdom from bundle (only needed in Node.js)
+    'markdown-it': 'markdown-it', // Exclude markdown-it (optional command, example only)
   },
   externalsPresets: {
     node: false,
@@ -55,7 +59,7 @@ export default {
   plugins: [
     new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
     new webpack.IgnorePlugin({
-      resourceRegExp: /^(jsdom|vitest|jest|@testing-library)$/,
+      resourceRegExp: /^(vitest|jest|@testing-library)$/,
     }),
     listOutputFilesPlugin,
   ],

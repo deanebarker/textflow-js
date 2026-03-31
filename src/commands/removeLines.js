@@ -1,19 +1,23 @@
 function removeLines(working, command, p) {
-  const linesToRemove = command.getArg("lines");
-  const from = command.getArg("from") || "start";
+  const lines_arg = command.getArg("lines");
+  const fromArg = command.getArg("from") || "start";
   const regex = command.getArg("regex");
 
   let lines = working.text.split("\n");
 
   if (regex) {
-    const pattern = new RegExp(regex);
-    lines = lines.filter((l) => !pattern.test(l));
+    try {
+      const pattern = new RegExp(regex);
+      lines = lines.filter((l) => !pattern.test(l));
+    } catch (e) {
+      throw new Error(`Invalid regex pattern "${regex}": ${e.message}`);
+    }
   }
 
-  if (from === "start") {
-    return lines.slice(linesToRemove).join("\n");
-  } else if (from === "end") {
-    return lines.slice(0, -linesToRemove).join("\n");
+  if (fromArg === "start") {
+    return lines.slice(lines_arg).join("\n");
+  } else if (fromArg === "end") {
+    return lines.slice(0, -lines_arg).join("\n");
   }
 
   return working.text;
@@ -54,8 +58,10 @@ removeLines.parseValidators = [
   },
   {
     test: (command) => {
+      if (!command.hasArg("lines")) return true; // If lines not provided, that's OK (regex might be used instead)
       const lines = command.getArg("lines");
-      if (isNaN(lines) || lines < 0) return false;
+      const numLines = Number(lines);
+      if (isNaN(numLines) || numLines < 0) return false;
       return true;
     },
     message: "The number of lines to remove must be a non-negative number.",

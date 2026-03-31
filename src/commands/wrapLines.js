@@ -1,31 +1,36 @@
-import { Helpers } from "../textflow.js";
+import { getDom } from "../helpers.js";
 
 async function wrapLines(working, command) {
+  // Get all arguments upfront
+  const tag = command.getArg("tag,tagName") || "div";
+  const classArg = command.getArg("class,className");
+  const trim = command.getArg("trim");
+  const removeEmpty = command.getArg("remove-empty");
 
-  const tagName = command.getArg("tag,tagName") || "div";
-  const classNames = command.getArg("class,className");
-  const trim = command.getArg("trim") === "true" || command.getArg("trim") === true;
-  const removeEmpty = command.getArg("remove-empty") === "true" || command.getArg("remove-empty") === true;
+  const shouldTrim = trim === "true" || trim === true;
+  const shouldRemoveEmpty = removeEmpty === "true" || removeEmpty === true;
 
   const lines = working.text
     .split("\n")
-    .map((line) => (trim ? line.trim() : line))
-    .filter((line) => (removeEmpty ? line : true));
+    .map((line) => (shouldTrim ? line.trim() : line))
+    .filter((line) => (shouldRemoveEmpty ? line : true));
 
-  const dom = await Helpers.getDom();
+  const dom = await getDom();
 
   return lines.map((line) => {
-
-      const wrapper = dom.createElement(tagName);
-      if (classNames) {
-        for (const className of classNames.split(" ")) {
-          wrapper.classList.add(className);
+      try {
+        const wrapper = dom.createElement(tag);
+        if (classArg) {
+          for (const className of classArg.split(" ")) {
+            wrapper.classList.add(className);
+          }
         }
+
+        wrapper.innerHTML = line;
+        return wrapper.outerHTML;
+      } catch (e) {
+        throw new Error(`Failed to create element with tag "${tag}": ${e.message}`);
       }
-
-      wrapper.innerHTML = line;
-      return wrapper.outerHTML;
-
   }
   ).join("\n");
 }

@@ -165,12 +165,14 @@ Thumbs.db
 .env.local
 config.local.js
 webpack.dev.js
+webpack.analyze.js
 .claude/
 
 # Test output
 test-results/
 coverage/
 .jest/
+dist-test/
 
 # Documentation build
 docs/build/

@@ -1,11 +1,11 @@
 function append(working, command, p) {
-  const textToAppend = command.getArg("text");
+  const text = command.getArg("text");
 
-  if(!textToAppend) {
+  if(!text) {
     return working.text;
   }
-  
-  return working.text + textToAppend;
+
+  return working.text + text;
 }
 
 // Meta

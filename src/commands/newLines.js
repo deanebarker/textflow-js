@@ -1,14 +1,17 @@
 function newLines(working, command) {
+  // Get all arguments upfront
+  const trim = command.getArg("trim");
+  const removeEmpty = command.getArg("remove-empty");
 
   const lineBreakTag = "<br>"; // HTML5 line break tag (no closing tag needed)
 
-  const trim = command.getArg("trim") === "true" || command.getArg("trim") === true;
-  const removeEmpty = command.getArg("remove-empty") === "true" || command.getArg("remove-empty") === true;
+  const shouldTrim = trim === "true" || trim === true;
+  const shouldRemoveEmpty = removeEmpty === "true" || removeEmpty === true;
 
   const lines = working.text
     .split("\n")
-    .map((line) =>  trim ? line.trim() : line)
-    .filter((line) => removeEmpty ? line : true);
+    .map((line) => shouldTrim ? line.trim() : line)
+    .filter((line) => shouldRemoveEmpty ? line : true);
   
     return lines.join(lineBreakTag);
 }

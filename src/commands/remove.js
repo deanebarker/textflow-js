@@ -1,4 +1,4 @@
-import { Helpers } from "../textflow.js";
+import { parseHtml } from "../helpers.js";
 
 async function remove(working, command) {
   const selector = command.getArg("selector");
@@ -7,7 +7,7 @@ async function remove(working, command) {
   }
 
   const preserve = command.getArg("preserve");
-  const doc = await Helpers.parseHtml(working.text);
+  const doc = await parseHtml(working.text);
   const elements = doc.querySelectorAll(selector);
   elements.forEach((el) => {
     if (preserve === "all") {
@@ -18,7 +18,8 @@ async function remove(working, command) {
       el.remove();
     }
   });
-  return doc.body.innerHTML;
+  const bodyContent = doc.body?.innerHTML ?? '';
+  return bodyContent;
 }
 
 // Meta

@@ -1,8 +1,17 @@
 import jsonata from "jsonata";
 
 async function jsonataQuery(working, command, p) {
-  let expr = command.getArg("expr", command);
-  const result = await jsonata(expr).evaluate(JSON.parse(working.text));
+  const expr = command.getArg("expr");
+
+  const data = JSON.parse(working.text);
+
+  let result;
+  try {
+    result = await jsonata(expr).evaluate(data);
+  } catch (e) {
+    throw new Error(`JSONata expression failed to evaluate: ${e.message}`);
+  }
+
   return {
     text: JSON.stringify(result),
     contentType: "application/json",

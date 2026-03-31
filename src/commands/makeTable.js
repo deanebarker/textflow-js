@@ -1,16 +1,19 @@
 import { Liquid } from "liquidjs";
-import { Helpers } from "../textflow.js";
+import { detectMimeType, getDom } from "../helpers.js";
 
 async function makeTable(working, command, p) {
-
+  // Get all arguments upfront
   const target = command.getArg("target,clickTarget"); // Note: clickTarget was an old name for this arg
+  const hide = command.getArg("hide");
+  const hidePattern = command.getArg("hide-pattern");
+  const headerRegex = command.getArg("header-regex");
 
   // Detect the input and turn it into a array of Maps
   let data = [];
-  if (Helpers.detectMimeType(working.text).includes("json")) {
+  if (detectMimeType(working.text).includes("json")) {
     const json = JSON.parse(working.text);
     data = json.map((o) => new Map(Object.entries(o)));
-  } else if (Helpers.detectMimeType(working.text).includes("csv")) {
+  } else if (detectMimeType(working.text).includes("csv")) {
     data = parseCSVtoMaps(working.text);
   }
 
@@ -25,18 +28,31 @@ async function makeTable(working, command, p) {
   }
 
   // Parse hidden columns
-  const hideArg = command.getArg("hide");
-  const hidePatternArg = command.getArg("hide-pattern");
-  const hidePattern = hidePatternArg ? new RegExp(hidePatternArg) : null;
-  const hiddenColumns = hideArg
-    ? new Set(hideArg.split(",").map((s) => s.trim()))
+  const hidePatternRegex = hidePattern ? new RegExp(hidePattern) : null;
+  const hiddenColumns = hide
+    ? new Set(hide.split(",").map((s) => s.trim()))
     : new Set();
 
   // Get the column titles (excluding hidden columns)
   const columnTitles = new Map();
   for (const col of columnArgs) {
-    if (!hiddenColumns.has(col) && !(hidePattern && hidePattern.test(col))) {
+    if (!hiddenColumns.has(col) && !(hidePatternRegex && hidePatternRegex.test(col))) {
       columnTitles.set(col, command.getArg(columnArgPrefix + col) ?? col);
+    }
+  }
+
+  // Apply header-regex transform to column titles
+  if (headerRegex) {
+    const ops = headerRegex.split(";").map(parseSedReplace);
+    for (const [col, title] of columnTitles) {
+      const transformed = ops.reduce((t, { pattern, replacement, flags }) => {
+        try {
+          return t.replace(new RegExp(pattern, flags), replacement);
+        } catch (e) {
+          throw new Error(`Invalid regex in sed expression: ${e.message}`);
+        }
+      }, title);
+      columnTitles.set(col, transformed);
     }
   }
 
@@ -67,6 +83,11 @@ makeTable.args = [
     name: "hide-pattern",
     type: "string",
     description: "Regex pattern to match column keys to hide from display",
+  },
+  {
+    name: "header-regex",
+    type: "string",
+    description: "Sed-style regex to transform column header titles (e.g., s/_/ /g)",
   },
   {
     name: "target",
@@ -222,7 +243,7 @@ function parseCSVtoMaps(
  * @returns {HTMLTableElement}
  */
 async function mapsToTable(rows, fieldsMap, target) {
-  const dom = await Helpers.getDom();
+  const dom = await getDom();
   const table = dom.createElement("table");
   const thead = table.createTHead();
   const tbody = table.createTBody();
@@ -316,7 +337,9 @@ async function mapsToTable(rows, fieldsMap, target) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .replace(/-{2,}/g, "-");
-    if (/^[0-9]/.test(s)) s = "c-" + s; // class can't start with a digit
+    if (/^[0-9]/.test(s)) {
+      s = "c-" + s; // class can't start with a digit
+    }
     return s || "col";
   }
 
@@ -343,6 +366,14 @@ async function mapsToTable(rows, fieldsMap, target) {
     const n = Number(s.replace(/,/g, ""));
     return Number.isFinite(n);
   }
+}
+
+function parseSedReplace(sed) {
+  if (sed.length < 2 || sed[0] !== "s") throw new Error(`Invalid sed expression: ${sed}`);
+  const delim = sed[1];
+  const parts = sed.slice(2).split(delim);
+  if (parts.length < 3) throw new Error(`Invalid sed expression: ${sed}`);
+  return { pattern: parts[0], replacement: parts[1], flags: parts[2] };
 }
 
 export default makeTable;

@@ -1,15 +1,15 @@
-import { Helpers } from "../textflow.js";
+import { getDom } from "../helpers.js";
 
 async function wrap(working, command) {
-
-  const tagName = command.getArg("tag,tagName") || "div";
+  // Get all arguments upfront
+  const tag = command.getArg("tag,tagName") || "div";
   const id = command.getArg("id");
-  const classNames = command.getArg("class,className");
+  const classArg = command.getArg("class,className");
 
-  const wrapper = (await Helpers.getDom()).createElement(tagName);
+  const wrapper = (await getDom()).createElement(tag);
 
-  if (classNames) {
-    for (const className of classNames.split(" ")) {
+  if (classArg) {
+    for (const className of classArg.split(" ")) {
       wrapper.classList.add(className);
     }
   }

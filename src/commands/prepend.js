@@ -1,11 +1,11 @@
 function prepend(working, command, p) {
-  const textToPrepend = command.getArg("text");
+  const text = command.getArg("text");
 
-  if (!textToPrepend) {
+  if (!text) {
     return working.text;
   }
 
-  return textToPrepend + working.text;
+  return text + working.text;
 }
 
 // Meta

@@ -1,5 +1,6 @@
 import { expect, test, describe } from "vitest";
-import { Pipeline, executePipeline, validateCommands, Helpers } from "../src/textflow.js";
+import { Pipeline, executePipeline, validateCommands } from "../src/textflow.js";
+import { detectMimeType } from "../src/helpers.js";
 
 // Helper to build a command in the raw format Pipeline expects
 function cmd(name, args = {}) {
@@ -428,40 +429,40 @@ describe("allowedValues validation", () => {
 });
 
 //==============================================================================
-// Helpers.detectMimeType
+// detectMimeType
 //==============================================================================
 
-describe("Helpers.detectMimeType", () => {
+describe("detectMimeType", () => {
   test("detects JSON object", () => {
-    expect(Helpers.detectMimeType('{"key": "value"}')).toBe("application/json");
+    expect(detectMimeType('{"key": "value"}')).toBe("application/json");
   });
 
   test("detects JSON array", () => {
-    expect(Helpers.detectMimeType("[1, 2, 3]")).toBe("application/json");
+    expect(detectMimeType("[1, 2, 3]")).toBe("application/json");
   });
 
   test("does not classify invalid JSON as application/json", () => {
-    expect(Helpers.detectMimeType("{not valid json")).not.toBe("application/json");
+    expect(detectMimeType("{not valid json")).not.toBe("application/json");
   });
 
   test("detects HTML by doctype", () => {
-    expect(Helpers.detectMimeType("<!DOCTYPE html><html></html>")).toBe("text/html");
+    expect(detectMimeType("<!DOCTYPE html><html></html>")).toBe("text/html");
   });
 
   test("detects HTML by common tag", () => {
-    expect(Helpers.detectMimeType("<div>hello</div>")).toBe("text/html");
+    expect(detectMimeType("<div>hello</div>")).toBe("text/html");
   });
 
   test("detects CSV", () => {
     const csv = "name,age,city\nAlice,30,NYC\nBob,25,LA\n";
-    expect(Helpers.detectMimeType(csv)).toBe("text/csv");
+    expect(detectMimeType(csv)).toBe("text/csv");
   });
 
   test("falls back to text/plain for plain text", () => {
-    expect(Helpers.detectMimeType("just some plain text")).toBe("text/plain");
+    expect(detectMimeType("just some plain text")).toBe("text/plain");
   });
 
   test("handles non-string input by converting it", () => {
-    expect(Helpers.detectMimeType(42)).toBe("text/plain");
+    expect(detectMimeType(42)).toBe("text/plain");
   });
 });

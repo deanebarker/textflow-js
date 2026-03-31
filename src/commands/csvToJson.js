@@ -1,65 +1,18 @@
-import {
-  Liquid,
-  Drop,
-} from "liquidjs";
+import { toCamelCase } from "../helpers.js";
 
-async function templateCsv(working, command, p) {
-  let template = command.getArg("template");
-
-  if (template == null && command.getArg("url")) {
-    const response = await fetch(command.getArg("url"));
-    template = await response.text();
-  }
-  
-  if (template == null && command.getArg("templateSelector")) {
-    template = document.querySelector(
-      command.getArg("templateSelector")
-    ).innerHTML;
-  }
-
-  const engine = new Liquid();
-  const renderedText = await engine.parseAndRender(template, {
-    data: csvToObjects(working.text),
-    vars: p.vars,
-  });
-  return {
-    text: renderedText,
-    contentType: "text/html",
-  };
+function csvToJson(working) {
+  const data = csvToObjects(working.text);
+  return JSON.stringify(data, null, 2);
 }
-templateCsv.title = "Template CSV";
-templateCsv.description = "Apply a Liquid template to CSV data.";
-templateCsv.args = [
-  { name: "template", type: "string", description: "Liquid template string" },
-  { name: "url", type: "string", description: "URL to fetch template from" },
-  {
-    name: "templateSelector",
-    type: "string",
-    description: "CSS selector to get template from DOM",
-  },
-];
-templateCsv.allowedContentTypes = ["csv"];
 
-export default templateCsv;
+// Meta
 
-// --- Header → camelCase helper -------------------------------------------
-function toCamelCase(header) {
-  return (
-    String(header || "")
-      .trim()
-      // remove leading/trailing non-alphanumerics
-      .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")
-      // split on spaces, underscores, dashes, etc.
-      .split(/[\s_\-]+/)
-      .filter(Boolean)
-      .map((word, index) => {
-        const lower = word.toLowerCase();
-        if (index === 0) return lower;
-        return lower.charAt(0).toUpperCase() + lower.slice(1);
-      })
-      .join("")
-  );
-}
+csvToJson.title = "CSV to JSON";
+csvToJson.description = "Convert CSV data to a JSON array of objects with camelCased property names.";
+csvToJson.args = [];
+csvToJson.allowedContentTypes = ["csv"];
+
+// Helpers
 
 // --- Low-level CSV → rows (array-of-arrays) -------------------------------
 function parseCsvToRows(csvText) {
@@ -139,3 +92,5 @@ function csvToObjects(csvText) {
 
   return objects;
 }
+
+export default csvToJson;
