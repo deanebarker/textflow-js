@@ -178,10 +178,11 @@ describe("wrapCommand", () => {
 });
 
 //==============================================================================
-// processCommandResult
+//==============================================================================
+// Command result handling
 //==============================================================================
 
-describe("processCommandResult via execute", () => {
+describe("Command result handling", () => {
   test("string return value replaces working.text", async () => {
     const fn = async () => "replaced";
     fn.parseValidators = [];
@@ -190,45 +191,7 @@ describe("processCommandResult via execute", () => {
     expect(working.text).toBe("replaced");
   });
 
-  test("plain object return merges text property", async () => {
-    const fn = async () => ({ text: "merged" });
-    fn.parseValidators = [];
-    const p = makePipeline([cmd("test-cmd")], { "test-cmd": fn });
-    const working = await p.execute({ history: [], text: "" });
-    expect(working.text).toBe("merged");
-  });
 
-  test("plain object return merges container shallowly into a WorkingData", async () => {
-    // Container merging only happens when working is a WorkingData instance (not a
-    // plain object). Use executePipeline to get a real WorkingData, then run two
-    // commands that each return a different container key.
-    const fn1 = async () => ({ container: { height: 50 } });
-    fn1.parseValidators = [];
-    Pipeline.staticCommandLib.set("__test-container-a", fn1);
-
-    const fn2 = async () => ({ container: { width: 100 } });
-    fn2.parseValidators = [];
-    Pipeline.staticCommandLib.set("__test-container-b", fn2);
-
-    try {
-      const result = await executePipeline("", null, {
-        commands: [cmd("__test-container-a"), cmd("__test-container-b")],
-      }, null);
-      expect(result.container.height).toBe(50);
-      expect(result.container.width).toBe(100);
-    } finally {
-      Pipeline.staticCommandLib.delete("__test-container-a");
-      Pipeline.staticCommandLib.delete("__test-container-b");
-    }
-  });
-
-  test("plain object return sets source", async () => {
-    const fn = async () => ({ text: "x", source: "https://example.com" });
-    fn.parseValidators = [];
-    const p = makePipeline([cmd("test-cmd")], { "test-cmd": fn });
-    const working = await p.execute({ history: [], text: "" });
-    expect(working.source).toBe("https://example.com");
-  });
 });
 
 //==============================================================================
@@ -308,10 +271,6 @@ describe("executePipeline", () => {
     expect(result.text).toBe("hello world");
   });
 
-  test("preserves source URL", async () => {
-    const result = await executePipeline("x", "https://example.com", { commands: [] }, null);
-    expect(result.source).toBe("https://example.com");
-  });
 
   test("accepts a vars map for variable resolution", async () => {
     const vars = new Map([["greeting", "hello world"]]);
@@ -334,7 +293,6 @@ describe("executePipeline", () => {
       null
     );
     expect(result.text).toBe("hello world");
-    expect(result.source).toBe("https://example.com");
   });
 });
 
@@ -474,5 +432,87 @@ describe("detectMimeType", () => {
 
   test("handles non-string input by converting it", () => {
     expect(detectMimeType(42)).toBe("text/plain");
+  });
+});
+
+//==============================================================================
+// Custom command validation - ensure commands return strings
+//==============================================================================
+
+describe("Custom command validation", () => {
+  test("throws error if command returns an object", async () => {
+    const badCommand = async () => ({ text: "should be string" });
+    badCommand.parseValidators = [];
+    const p = makePipeline([cmd("bad-cmd")], { "bad-cmd": badCommand });
+
+    await expect(p.execute({ history: [], text: "input" })).rejects.toThrow(
+      'Command "bad-cmd" returned object instead of a string'
+    );
+  });
+
+  test("throws error if command returns a number", async () => {
+    const badCommand = async () => 42;
+    badCommand.parseValidators = [];
+    const p = makePipeline([cmd("bad-cmd")], { "bad-cmd": badCommand });
+
+    await expect(p.execute({ history: [], text: "input" })).rejects.toThrow(
+      'Command "bad-cmd" returned number instead of a string'
+    );
+  });
+
+  test("throws error if command returns a boolean", async () => {
+    const badCommand = async () => true;
+    badCommand.parseValidators = [];
+    const p = makePipeline([cmd("bad-cmd")], { "bad-cmd": badCommand });
+
+    await expect(p.execute({ history: [], text: "input" })).rejects.toThrow(
+      'Command "bad-cmd" returned boolean instead of a string'
+    );
+  });
+
+  test("throws error if command returns an array", async () => {
+    const badCommand = async () => [1, 2, 3];
+    badCommand.parseValidators = [];
+    const p = makePipeline([cmd("bad-cmd")], { "bad-cmd": badCommand });
+
+    await expect(p.execute({ history: [], text: "input" })).rejects.toThrow(
+      'Command "bad-cmd" returned object instead of a string'
+    );
+  });
+
+  test("allows command to return null", async () => {
+    const okCommand = async () => null;
+    okCommand.parseValidators = [];
+    const p = makePipeline([cmd("ok-cmd")], { "ok-cmd": okCommand });
+
+    const working = await p.execute({ history: [], text: "original" });
+    expect(working.text).toBe("original");
+  });
+
+  test("allows command to return undefined", async () => {
+    const okCommand = async () => undefined;
+    okCommand.parseValidators = [];
+    const p = makePipeline([cmd("ok-cmd")], { "ok-cmd": okCommand });
+
+    const working = await p.execute({ history: [], text: "original" });
+    expect(working.text).toBe("original");
+  });
+
+  test("allows command to return a string", async () => {
+    const goodCommand = async () => "new text";
+    goodCommand.parseValidators = [];
+    const p = makePipeline([cmd("good-cmd")], { "good-cmd": goodCommand });
+
+    const working = await p.execute({ history: [], text: "original" });
+    expect(working.text).toBe("new text");
+  });
+
+  test("allows command to return an empty string", async () => {
+    const goodCommand = async () => "";
+    goodCommand.parseValidators = [];
+    const p = makePipeline([cmd("good-cmd")], { "good-cmd": goodCommand });
+
+    const working = await p.execute({ history: [], text: "original" });
+    expect(working.text).toBe("");
   });
 });

@@ -1,5 +1,5 @@
 function noOp(working, command, p) {
-  return working;
+  return working.text;
 }
 noOp.title = "No Operation";
 noOp.description =

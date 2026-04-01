@@ -9,11 +9,7 @@ function raiseEvent(working, command, pipeline) {
   const eventDetail = {
     working: {
       text: working.text,
-      source: working.source,
-      extension: working.extension,
       abort: working.abort,
-      styleBlocks: working.styleBlocks,
-      container: working.container,
       history: working.history,
     },
     pipeline: {
@@ -34,7 +30,7 @@ function raiseEvent(working, command, pipeline) {
   }
 
   // Return the working object unchanged
-  return working;
+  return working.text;
 }
 
 // Meta

@@ -14,12 +14,19 @@ export async function execute(commands, text) {
 
 function convertCommand(command) {
   try {
-    return {
+    const converted = {
       name: command.name,
       arguments: Object.keys(command)
-        .filter((k) => k !== "name")
+        .filter((k) => k !== "name" && k !== "target")
         .map((k) => ({ key: k, value: command[k] })),
     };
+
+    // target is not an argument, it's a direct property on the command object
+    if (command.target !== undefined) {
+      converted.target = command.target;
+    }
+
+    return converted;
   } catch (e) {
     console.error("Error converting command:", e);
     throw e;

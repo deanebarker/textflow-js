@@ -1,6 +1,16 @@
 function readFrom(working, command, p) {
   let varArg = command.getArg("var");
-  return working.vars.get(varArg);
+  const value = working.vars.get(varArg);
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
 }
 readFrom.title = "Read From Variable";
 readFrom.description = "Read the value of a variable.";

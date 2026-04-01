@@ -31,8 +31,3 @@ test("Converts both links and images in the same document", async () => {
   expect(result.text).toBe('<a href="https://example.com/page.html">Link</a><img src="https://example.com/img.png">');
 });
 
-test("Leaves relative URLs unchanged when no base URL is available", async () => {
-  const command = { name: "absolutize" };
-  const result = await execute([command], '<a href="page.html">Link</a>');
-  expect(result.text).toBe('<a href="page.html">Link</a>');
-});

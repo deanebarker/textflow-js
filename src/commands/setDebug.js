@@ -1,6 +1,6 @@
 function setDebug(working, args, p) {
   p.debug = true;
-  return working;
+  return working.text;
 }
 setDebug.title = "Set Debug";
 setDebug.description =

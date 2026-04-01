@@ -24,14 +24,10 @@ async function http(working, command, p) {
   if (!response.ok) {
     p.log(`HTTP failed: ${response.status} ${response.statusText}`);
     working.abort = true;
-    return working;
+    return working.text;
   }
 
-  const text = await response.text();
-  return {
-    text,
-    source: url,
-  };
+  return await response.text();
 }
 
 // Meta

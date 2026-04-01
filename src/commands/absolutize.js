@@ -2,7 +2,7 @@ import { parseHtml } from "../helpers.js";
 
 async function absolutize(working, command, p) {
 
-  const url = command.getArg("url") ?? working.source;
+  const url = command.getArg("url");
 
   const doc = await parseHtml(working.text);
 
@@ -23,23 +23,28 @@ async function absolutize(working, command, p) {
 // Meta
 
 absolutize.title = "Absolutize URLs";
-absolutize.description = "Convert relative URLs to absolute based on source URL. By default this operates on the URL the original pipeline input was retrieved from.";
+absolutize.description = "Convert relative URLs to absolute based on a provided base URL.";
 absolutize.args = [
   {
     name: "url",
     type: "string",
-    description: "The base URL with which to calculate the new links. If not provided, the source URL will be used.",
+    description: "The base URL with which to calculate the new links (required).",
   },
 ];
 absolutize.parseValidators = [
   {
+    test: (command) => command.hasArg("url"),
+    message: "You must provide a URL for absolutizing links.",
+  },
+  {
     test: (command) => {
-      if (command.getArg("url") && !isAbsoluteUrl(command.getArg("url"))) {
+      const url = command.getArg("url");
+      if (!isAbsoluteUrl(url)) {
         return false;
       }
       return true;
     },
-    message: "If you provide a URL, it must be an absolute URL.",
+    message: "The URL must be an absolute URL.",
   },
 ];
 

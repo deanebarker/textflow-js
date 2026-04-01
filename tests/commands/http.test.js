@@ -33,7 +33,6 @@ test("Fetches text content from a URL", async () => {
     "",
   );
   expect(result.text).toBe("Hello world");
-  expect(result.source).toBe("https://example.com");
 });
 
 test("Sets content-type from response header", async () => {
@@ -85,7 +84,7 @@ test("Returns empty working data on non-ok response", async () => {
     ],
   });
   const working = await p.execute({ history: [], text: "" });
-  expect(working.source).toBeUndefined();
+  expect(working.text).toBeUndefined();
 });
 
 // method argument
