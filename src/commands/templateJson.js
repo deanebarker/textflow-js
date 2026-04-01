@@ -27,13 +27,19 @@ async function templateJson(working, command, p) {
   try {
     data = JSON.parse(working.text);
   } catch (e) {
-    throw new Error(`Invalid JSON in working text: ${e.message}`);
+    // Swallow it, they might just use vars
   }
-  const renderedText = await engine.parseAndRender(template, {
-    data: data,
-    vars: p.vars,
-  });
-  return renderedText;
+  
+
+  try{
+    const renderedText = await engine.parseAndRender(template, {
+      data: data,
+      vars: Object.fromEntries(working.vars),
+    });
+    return renderedText;
+  } catch(e) {
+    throw new Error(`Error rendering template: ${e.message}`);
+  }
 }
 
 // Meta

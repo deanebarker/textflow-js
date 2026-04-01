@@ -23,6 +23,8 @@ import setAttribute from "./commands/setAttribute.js";
 import csvToJson from "./commands/csvToJson.js";
 import htmlTableToJson from "./commands/htmlTableToJson.js";
 import raiseEvent from "./commands/raiseEvent.js";
+import readFrom from "./commands/readFrom.js";
+import writeTo from "./commands/writeTo.js";
 
 import debugTemplate from "./templates/debug.liquid";
 
@@ -74,7 +76,11 @@ export async function executePipeline(
 
   const working = new WorkingData(input, source);
   const p = new Pipeline(commands);
-  p.vars = actualVars ?? new Map();
+
+  // Both the working data and the pipe get the same vars initially. However, the working vars can vary over the course of execution, while the pipeline.vars is really just a reference to the same Map for use in commands that need access to the vars but don't have access to the working object. This is a bit awkward, but it allows us to keep the command function signatures consistent with (working, command, pipeline) without needing to pass vars separately.
+  // The pipeline vars are what can be injected into command arguments using the {varName} syntax, so they need to be set before we execute any commands. The working.vars is what commands can read and modify during execution.
+  p.vars = actualVars ?? new Map(); // The Pipeline vars are frozen after construction.
+  working.vars = actualVars ?? new Map();
   return await p.execute(working);
 }
 
@@ -132,6 +138,8 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("csv-to-json", csvToJson);
     Pipeline.staticCommandLib.set("table-to-json", htmlTableToJson);
     Pipeline.staticCommandLib.set("raise-event", raiseEvent);
+    Pipeline.staticCommandLib.set("read-from", readFrom);
+    Pipeline.staticCommandLib.set("write-to", writeTo);
   }
 
   //============================================================================
@@ -567,7 +575,7 @@ export class Pipeline {
 // WORKING DATA CLASS - Represents data flowing through the pipeline
 //==============================================================================
 
-class WorkingData {
+export class WorkingData {
   //============================================================================
   // CONSTRUCTOR
   //============================================================================
@@ -579,6 +587,7 @@ class WorkingData {
     this.styleBlocks = [];
     this.container = {};
     this.history = [];
+    this.vars = new Map();
   }
 }
 

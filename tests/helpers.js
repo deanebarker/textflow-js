@@ -1,12 +1,10 @@
-import { Pipeline } from "../src/textflow.js";
+import { Pipeline, WorkingData } from "../src/textflow.js";
 
 export async function execute(commands, text) {
-  let working = {};
-  working.history = [];
+  let working = new WorkingData(text);
   commands = commands.map((c) => convertCommand(c));
   const p = new Pipeline({ commands });
   p.debug = true;
-  working.text = text;
   working = await p.execute(working);
   if (working.abort) {
     throw new Error("Pipeline execution aborted due to validation failure.");
