@@ -19,10 +19,7 @@ async function wrap(working, command) {
   }
 
   wrapper.innerHTML = working.text;
-  return {
-    text: wrapper.outerHTML,
-    contentType: "text/html",
-  };
+  return wrapper.outerHTML;
 }
 
 // Meta
@@ -45,7 +42,6 @@ wrap.args = [
     description: "Element ID"
   },
 ];
-wrap.allowedContentTypes = ["*"];
 wrap.parseValidators = [
   {
     test: (command) => {

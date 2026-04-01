@@ -21,7 +21,6 @@ addCss.args = [
   { name: "css", type: "string", description: "The CSS to add." },
   { name: "url", type: "string", description: "A URL to fetch CSS from." },
 ];
-addCss.allowedContentTypes = ["html"];
 addCss.parseValidators = [
   {
     test: (command) => {

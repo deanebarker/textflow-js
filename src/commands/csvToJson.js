@@ -10,7 +10,6 @@ function csvToJson(working) {
 csvToJson.title = "CSV to JSON";
 csvToJson.description = "Convert CSV data to a JSON array of objects with camelCased property names.";
 csvToJson.args = [];
-csvToJson.allowedContentTypes = ["csv"];
 
 // Helpers
 

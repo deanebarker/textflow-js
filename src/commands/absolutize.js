@@ -31,7 +31,6 @@ absolutize.args = [
     description: "The base URL with which to calculate the new links. If not provided, the source URL will be used.",
   },
 ];
-absolutize.allowedContentTypes = ["html"];
 absolutize.parseValidators = [
   {
     test: (command) => {

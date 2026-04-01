@@ -39,7 +39,6 @@ remove.args = [
     allowedValues: ["all", "text"],
   },
 ];
-remove.allowedContentTypes = ["plain", "html", "json", "*"];
 remove.parseValidators = [
   {
     test: (command) => {

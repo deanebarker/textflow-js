@@ -67,7 +67,6 @@ extract.args = [
     description: "String to join multiple results with (default: '\\n')",
   }
 ];
-extract.allowedContentTypes = ["html"];
 extract.parseValidators = [
   {
     test: (command) => {

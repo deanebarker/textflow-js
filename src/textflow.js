@@ -27,7 +27,6 @@ import raiseEvent from "./commands/raiseEvent.js";
 import debugTemplate from "./templates/debug.liquid";
 
 import { Liquid } from "liquidjs";
-import { detectMimeType } from "./helpers.js";
 
 //==============================================================================
 // PUBLIC API FUNCTIONS
@@ -35,17 +34,47 @@ import { detectMimeType } from "./helpers.js";
 
 /**
  * Execute a pipeline of commands on input data
+ *
+ * Supports both old and new signatures for backward compatibility:
+ * - New: executePipeline(input, source, commands, vars)
+ * - Old: executePipeline(input, initialContentType, source, commands, vars)
  */
 export async function executePipeline(
   input,
-  initialContentType,
-  source,
-  commands,
+  sourceOrContentType,
+  commandsOrSource,
+  commandsOrVars,
   vars
 ) {
-  const working = new WorkingData(input, initialContentType, source, null);
+  // BACKWARDS COMPATIBILITY: This function supports two signatures
+  //
+  // Old signature (5 args): executePipeline(input, initialContentType, source, commands, vars)
+  // New signature (4 args): executePipeline(input, source, commands, vars)
+  //
+  // The initialContentType parameter was removed when we removed all content-type tracking.
+  // To maintain backward compatibility, we detect which signature is being called by
+  // checking arguments.length:
+  // - If 5 args: caller used old signature; initialContentType (arg 2) is ignored,
+  //   and we remap args 3-5 to their correct positions
+  // - If 4 args: caller used new signature; args map directly to their parameters
+
+  let source, commands, actualVars;
+
+  if (arguments.length === 5) {
+    // Old signature: arguments are (input, initialContentType, source, commands, vars)
+    source = commandsOrSource;      // argument 3 -> source
+    commands = commandsOrVars;      // argument 4 -> commands
+    actualVars = vars;             // argument 5 -> vars
+  } else {
+    // New signature: arguments are (input, source, commands, vars)
+    source = sourceOrContentType;   // argument 2 -> source
+    commands = commandsOrSource;    // argument 3 -> commands
+    actualVars = commandsOrVars;    // argument 4 -> vars
+  }
+
+  const working = new WorkingData(input, source);
   const p = new Pipeline(commands);
-  p.vars = vars ?? new Map();
+  p.vars = actualVars ?? new Map();
   return await p.execute(working);
 }
 
@@ -441,10 +470,6 @@ export class Pipeline {
         working.text = commandResult.text;
       }
 
-      if (commandResult.contentType !== undefined) {
-        working.contentType = commandResult.contentType;
-      }
-
       if (commandResult.source !== undefined) {
         working.source = commandResult.source;
       }
@@ -547,39 +572,13 @@ class WorkingData {
   // CONSTRUCTOR
   //============================================================================
 
-  constructor(text, contentType, source, extension) {
+  constructor(text, source) {
     this.text = text;
-    this.contentType = contentType;
     this.source = source;
-    this.extension = extension;
     this.abort = false;
     this.styleBlocks = [];
     this.container = {};
     this.history = [];
   }
-
-  //============================================================================
-  // CONTENT TYPE DETECTION
-  //============================================================================
-
-  /**
-   * Get the content type, using detection if not explicitly set
-   */
-  getContentType() {
-    const type = this.contentType || this.contentTypeByExtension[this.extension];
-    if (type) return type;
-
-    return detectMimeType(this.text);
-  }
-
-  /**
-   * Mapping of file extensions to content types
-   */
-  contentTypeByExtension = {
-    json: "application/json",
-    csv: "text/csv",
-    xml: "application/xml",
-    markdown: "text/markdown",
-  };
 }
 

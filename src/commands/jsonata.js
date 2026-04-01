@@ -12,10 +12,7 @@ async function jsonataQuery(working, command, p) {
     throw new Error(`JSONata expression failed to evaluate: ${e.message}`);
   }
 
-  return {
-    text: JSON.stringify(result),
-    contentType: "application/json",
-  };
+  return JSON.stringify(result);
 }
 
 // Meta
@@ -29,7 +26,6 @@ jsonataQuery.args = [
     description: "JSONata expression to evaluate",
   },
 ];
-jsonataQuery.allowedContentTypes = ["json"];
 jsonataQuery.parseValidators = [
   {
     test: (command) => {

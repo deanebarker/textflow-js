@@ -31,10 +31,10 @@ test("Evaluates an arithmetic expression", async () => {
   expect(result.text).toBe("15");
 });
 
-test("Sets content type to application/json", async () => {
+test("Returns valid JSON as text", async () => {
   const command = { name: "jsonata", expr: "val" };
   const result = await execute([command], '{"val": 1}');
-  expect(result.contentType).toBe("application/json");
+  expect(JSON.parse(result.text)).toBe(1);
 });
 
 test("Aborts when expr argument is missing", async () => {

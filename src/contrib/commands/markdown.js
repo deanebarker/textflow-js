@@ -16,4 +16,3 @@ markdown.title = "Markdown";
 markdown.description =
   "Convert Markdown text to HTML using markdown-it parser.";
 markdown.args = [];
-markdown.allowedContentTypes = ["markdown", "plain"];

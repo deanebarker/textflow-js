@@ -95,7 +95,6 @@ makeTable.args = [
     description: "URL template for clickable rows (uses Liquid templating)",
   },
 ];
-makeTable.allowedContentTypes = ["json", "csv"];
 
 
 // Helpers

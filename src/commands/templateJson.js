@@ -57,7 +57,6 @@ templateJson.args = [
     description: "CSS selector to get template from DOM",
   },
 ];
-templateJson.allowedContentTypes = ["json"];
 templateJson.parseValidators = [
   {
     test: (command) => {

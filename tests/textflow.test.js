@@ -190,13 +190,12 @@ describe("processCommandResult via execute", () => {
     expect(working.text).toBe("replaced");
   });
 
-  test("plain object return merges text and contentType", async () => {
-    const fn = async () => ({ text: "merged", contentType: "text/html" });
+  test("plain object return merges text property", async () => {
+    const fn = async () => ({ text: "merged" });
     fn.parseValidators = [];
     const p = makePipeline([cmd("test-cmd")], { "test-cmd": fn });
     const working = await p.execute({ history: [], text: "" });
     expect(working.text).toBe("merged");
-    expect(working.contentType).toBe("text/html");
   });
 
   test("plain object return merges container shallowly into a WorkingData", async () => {
@@ -212,7 +211,7 @@ describe("processCommandResult via execute", () => {
     Pipeline.staticCommandLib.set("__test-container-b", fn2);
 
     try {
-      const result = await executePipeline("", null, null, {
+      const result = await executePipeline("", null, {
         commands: [cmd("__test-container-a"), cmd("__test-container-b")],
       }, null);
       expect(result.container.height).toBe(50);
@@ -302,7 +301,6 @@ describe("executePipeline", () => {
   test("executes a pipeline and returns working data", async () => {
     const result = await executePipeline(
       "hello",
-      "text/plain",
       null,
       { commands: [cmd("append", { text: " world" })] },
       null
@@ -310,9 +308,9 @@ describe("executePipeline", () => {
     expect(result.text).toBe("hello world");
   });
 
-  test("passes initial contentType through", async () => {
-    const result = await executePipeline("x", "text/html", null, { commands: [] }, null);
-    expect(result.contentType).toBe("text/html");
+  test("preserves source URL", async () => {
+    const result = await executePipeline("x", "https://example.com", { commands: [] }, null);
+    expect(result.source).toBe("https://example.com");
   });
 
   test("accepts a vars map for variable resolution", async () => {
@@ -320,11 +318,23 @@ describe("executePipeline", () => {
     const result = await executePipeline(
       "",
       null,
-      null,
       { commands: [cmd("append", { text: "{greeting}" })] },
       vars
     );
     expect(result.text).toBe("hello world");
+  });
+
+  test("supports old signature with contentType parameter (backward compatibility)", async () => {
+    // Old signature: executePipeline(input, initialContentType, source, commands, vars)
+    const result = await executePipeline(
+      "hello",
+      "text/html",  // initialContentType (ignored)
+      "https://example.com",
+      { commands: [cmd("append", { text: " world" })] },
+      null
+    );
+    expect(result.text).toBe("hello world");
+    expect(result.source).toBe("https://example.com");
   });
 });
 

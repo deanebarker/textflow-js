@@ -44,7 +44,6 @@ removeLines.args = [
     description: "A regular expression to match lines to remove.",
   },
 ];
-removeLines.allowedContentTypes = ["html"];
 removeLines.parseValidators = [
   {
     test: (command) => {

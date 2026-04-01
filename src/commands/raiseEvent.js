@@ -9,7 +9,6 @@ function raiseEvent(working, command, pipeline) {
   const eventDetail = {
     working: {
       text: working.text,
-      contentType: working.contentType,
       source: working.source,
       extension: working.extension,
       abort: working.abort,
@@ -49,6 +48,5 @@ raiseEvent.args = [
     description: "Name of the custom event to raise (required)",
   },
 ];
-raiseEvent.allowedContentTypes = [];
 
 export default raiseEvent;

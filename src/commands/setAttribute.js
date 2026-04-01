@@ -46,7 +46,6 @@ setAttribute.args = [
   },
 ];
 
-setAttribute.allowedContentTypes = ["*"];
 setAttribute.parseValidators = [
   {
     test: (command) => {

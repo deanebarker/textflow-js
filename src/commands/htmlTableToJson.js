@@ -81,6 +81,5 @@ htmlTableToJson.args = [
     description: "CSS selector to extract a specific TABLE element before parsing (default: table)",
   },
 ];
-htmlTableToJson.allowedContentTypes = ["html"];
 
 export default htmlTableToJson;

@@ -38,6 +38,5 @@ newLines.args = [
 ];
 newLines.parseValidators = [];
 
-newLines.allowedContentTypes = ["plain", "*"];
 
 export default newLines;

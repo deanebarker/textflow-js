@@ -30,7 +30,6 @@ async function http(working, command, p) {
   const text = await response.text();
   return {
     text,
-    contentType: response.headers.get("content-type"),
     source: url,
   };
 }
@@ -60,7 +59,6 @@ http.args = [
       "Headers to include in the request. The portion after header_ becomes the header name (e.g. header_Authorization sends an Authorization header).",
   },
 ];
-http.allowedContentTypes = ["*"];
 http.parseValidators = [
   {
     test: (command) => command.hasArg("url"),

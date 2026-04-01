@@ -33,10 +33,10 @@ test("Works with special characters in event name", async () => {
   expect(result.text).toBe("test");
 });
 
-test("Preserves contentType", async () => {
+test("Preserves working data unchanged", async () => {
   const command = { name: "raise-event", event:"test-event" };
   const result = await execute([command], "test");
-  expect(result.contentType).toBeUndefined();
+  expect(result.text).toBe("test");
 });
 
 test("Works with empty input", async () => {

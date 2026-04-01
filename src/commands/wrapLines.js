@@ -75,6 +75,5 @@ wrapLines.parseValidators = [
   }
 ];
 
-wrapLines.allowedContentTypes = ["plain", "*"];
 
 export default wrapLines;

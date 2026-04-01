@@ -19,7 +19,6 @@ prepend.args = [
     description: "Text to prepend to the working text.",
   },
 ];
-prepend.allowedContentTypes = ["plain", "html", "json", "*"];
 prepend.parseValidators = [
   {
     test: (command) => {

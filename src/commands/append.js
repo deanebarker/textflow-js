@@ -18,7 +18,6 @@ append.args = [
     description: "Text to append to the working text.",
   },
 ];
-append.allowedContentTypes = ["plain", "html", "json", "*"];
 append.parseValidators = [
   {
     test: (command) => {
