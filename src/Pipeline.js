@@ -54,6 +54,8 @@ export class Pipeline {
   static onLog = null; // Optional callback for log messages: (args) => void
   static staticCommandLib = new Map(); // Commands available to all Pipeline instances
   instanceCommandLib = new Map(); // Commands specific to this instance
+  static staticAliasLib = new Map(); // Aliases available to all Pipeline instances
+  instanceAliasLib = new Map(); // Aliases specific to this instance
 
   //============================================================================
   // STATIC INITIALIZATION - Register all commands
@@ -133,6 +135,9 @@ export class Pipeline {
    */
   validateCommand(command) {
     const errors = [];
+
+    // Resolve alias to target command with merged arguments
+    command = this.resolveAlias(command);
 
     // Attach hasArg/getArg helpers so validators can inspect arguments by name
     this.wrapCommand(command, this);
@@ -240,6 +245,72 @@ export class Pipeline {
     };
   }
 
+  /**
+   * Get an alias by name, checking instance library first, then static
+   */
+  getAlias(name) {
+    if (this.instanceAliasLib.has(name)) {
+      return this.instanceAliasLib.get(name);
+    }
+    if (Pipeline.staticAliasLib.has(name)) {
+      return Pipeline.staticAliasLib.get(name);
+    }
+    return null;
+  }
+
+  /**
+   * Expand an alias command into a new command object with merged arguments.
+   * Returns the original command if it is not an alias.
+   */
+  resolveAlias(command) {
+    const alias = this.getAlias(command.name);
+    if (!alias) return command;
+
+    const presetPairs = Object.entries(alias.presetArgs).map(([key, value]) => ({
+      key,
+      value,
+    }));
+    const userArgs = command.arguments ?? [];
+    const merged = presetPairs.map((pair) => {
+      const override = userArgs.find((a) => a.key === pair.key);
+      return override ?? pair;
+    });
+    const extraUserArgs = userArgs.filter(
+      (a) =>
+        !Object.prototype.hasOwnProperty.call(alias.presetArgs, a.key),
+    );
+
+    return {
+      name: alias.target,
+      arguments: [...merged, ...extraUserArgs],
+      target: command.target,
+    };
+  }
+
+  /**
+   * Register a global alias available to all Pipeline instances.
+   */
+  static registerAlias(name, target, presetArgs = {}, meta = {}) {
+    if (!Pipeline.staticCommandLib.has(target)) {
+      throw new Error(
+        `registerAlias: target command "${target}" is not registered`,
+      );
+    }
+    Pipeline.staticAliasLib.set(name, { target, presetArgs, ...meta });
+  }
+
+  /**
+   * Register an alias on this pipeline instance only.
+   */
+  registerInstanceAlias(name, target, presetArgs = {}, meta = {}) {
+    if (!this.getCommandFunction(target)) {
+      throw new Error(
+        `registerInstanceAlias: target command "${target}" is not registered`,
+      );
+    }
+    this.instanceAliasLib.set(name, { target, presetArgs, ...meta });
+  }
+
   //============================================================================
   // MAIN EXECUTION METHOD
   //============================================================================
@@ -282,21 +353,26 @@ export class Pipeline {
       ...this.commands,
       ...this.tailCommands,
     ]) {
+      const displayName = command.name;
+      command = this.resolveAlias(command);
       this.wrapCommand(command, this);
 
-      this.log(`Executing: ${command.name}`, command.arguments);
+      this.log(`Executing: ${displayName}`, command.arguments);
 
       // Initialize command history tracking
       const history = {};
       history.command = {
-        name: command.name,
+        name: displayName,
         arguments: command.arguments,
       };
       history.input = working.text;
 
       // Check for unknown commands before execution
       if (!this.getCommandFunction(command.name)) {
-        const errorMsg = `Unknown command: "${command.name}". Available commands: ${Array.from(Pipeline.staticCommandLib.keys()).join(", ")}`;
+        const errorMsg = `Unknown command: "${command.name}". Available commands: ${[
+          ...Pipeline.staticCommandLib.keys(),
+          ...Pipeline.staticAliasLib.keys(),
+        ].join(", ")}`;
         this.log(errorMsg);
         continue; // Skip unknown commands and continue to the next one
       }
