@@ -21,6 +21,9 @@ import htmlTableToJson from "./commands/htmlTableToJson.js";
 import raiseEvent from "./commands/raiseEvent.js";
 import readFrom from "./commands/readFrom.js";
 import writeTo from "./commands/writeTo.js";
+import removeBefore from "./commands/removeBefore.js";
+import takeBefore from "./commands/takeBefore.js";
+import trim from "./commands/trim.js";
 
 import debugTemplate from "./templates/debug.liquid";
 
@@ -68,6 +71,9 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("append", append);
     Pipeline.staticCommandLib.set("remove", remove);
     Pipeline.staticCommandLib.set("remove-lines", removeLines);
+    Pipeline.staticCommandLib.set("remove-before", removeBefore);
+    Pipeline.staticCommandLib.set("take-before", takeBefore);
+    Pipeline.staticCommandLib.set("trim", trim);
     Pipeline.staticCommandLib.set("wrap-lines", wrapLines);
     Pipeline.staticCommandLib.set("set-attribute", setAttribute);
     Pipeline.staticCommandLib.set("csv-to-json", csvToJson);
