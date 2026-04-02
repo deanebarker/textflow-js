@@ -24,6 +24,10 @@ import writeTo from "./commands/writeTo.js";
 import removeBefore from "./commands/removeBefore.js";
 import takeBefore from "./commands/takeBefore.js";
 import trim from "./commands/trim.js";
+import set from "./commands/set.js";
+import lowerCase from "./commands/lowerCase.js";
+import upperCase from "./commands/upperCase.js";
+import capitalize from "./commands/capitalize.js";
 
 import debugTemplate from "./templates/debug.liquid";
 
@@ -81,6 +85,10 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("raise-event", raiseEvent);
     Pipeline.staticCommandLib.set("read-from", readFrom);
     Pipeline.staticCommandLib.set("write-to", writeTo);
+    Pipeline.staticCommandLib.set("set", set);
+    Pipeline.staticCommandLib.set("lower-case", lowerCase);
+    Pipeline.staticCommandLib.set("upper-case", upperCase);
+    Pipeline.staticCommandLib.set("capitalize", capitalize);
   }
 
   //============================================================================
