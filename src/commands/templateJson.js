@@ -23,6 +23,11 @@ async function templateJson(working, command, p) {
   }
 
   const engine = getLiquidEngine();
+  if(window.liquidFilters) {
+    for(const [name, fn] of Object.entries(window.liquidFilters)) {
+      engine.registerFilter(name, fn);
+    }
+  }
   let data;
   try {
     data = JSON.parse(working.text);
