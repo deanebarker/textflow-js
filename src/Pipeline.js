@@ -28,6 +28,8 @@ import set from "./commands/set.js";
 import lowerCase from "./commands/lowerCase.js";
 import upperCase from "./commands/upperCase.js";
 import capitalize from "./commands/capitalize.js";
+import end from "./commands/end.js";
+import abort from "./commands/abort.js";
 
 import debugTemplate from "./templates/debug.liquid";
 
@@ -91,6 +93,8 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("lower-case", lowerCase);
     Pipeline.staticCommandLib.set("upper-case", upperCase);
     Pipeline.staticCommandLib.set("capitalize", capitalize);
+    Pipeline.staticCommandLib.set("end", end);
+    Pipeline.staticCommandLib.set("abort", abort);
   }
 
   //============================================================================
