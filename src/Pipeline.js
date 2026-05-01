@@ -379,14 +379,19 @@ export class Pipeline {
 
       const validateErrors = this.validateCommand(command);
       if (validateErrors.length > 0) {
-        this.log(`Validation failed for command ${command.name}:`, validateErrors);
+        this.log(
+          `Validation failed for command ${command.name}:`,
+          validateErrors,
+        );
         working.abort = true;
         return working;
       }
 
       const func = this.getCommandFunction(command.name);
       if (working.text === null || working.text === undefined) {
-        throw new Error(`Command "${command.name}" execution failed: working text is null or undefined`);
+        throw new Error(
+          `Command "${command.name}" execution failed: working text is null or undefined`,
+        );
       }
       const beforeLength = working.text.length;
 
@@ -434,10 +439,12 @@ export class Pipeline {
       // This is outside the try-catch so validation errors propagate up
       if (commandResult != null) {
         if (typeof commandResult !== "string") {
-          throw new Error(`Command "${command.name}" returned ${typeof commandResult} instead of a string`);
+          throw new Error(
+            `Command "${command.name}" returned ${typeof commandResult} instead of a string`,
+          );
         }
 
-        if(command.target) {
+        if (command.target) {
           working.writeTo(command.target, commandResult);
         } else {
           working.text = commandResult;
@@ -452,6 +459,16 @@ export class Pipeline {
           command,
         );
         return new WorkingData(); // Do not return partial results
+      }
+
+      // Check for end condition
+      if (working.end) {
+        this.log(
+          `End triggered by command: ${command.name}`,
+          working,
+          command,
+        );
+        return working; // Do not return partial results
       }
 
       this.log(`Executed: ${command.name}`, command.arguments);
