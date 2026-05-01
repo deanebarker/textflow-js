@@ -351,12 +351,15 @@ export class Pipeline {
       throw new Error("Pipeline execution failed: command arrays are not properly initialized");
     }
 
-    // Execute all commands in order
-    for (let command of [
+    // Execute all commands in order. Using a queue (rather than a for-of)
+    // so future commands can manipulate the remaining queue (e.g. jump ahead).
+    const queue = [
       ...this.headCommands,
       ...this.commands,
       ...this.tailCommands,
-    ]) {
+    ];
+    while (queue.length > 0) {
+      let command = queue.shift();
       const displayName = command.name;
       command = this.resolveAlias(command);
       this.wrapCommand(command, this);
