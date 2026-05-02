@@ -488,7 +488,8 @@ export class Pipeline {
           working,
           command,
         );
-        return new WorkingData(); // Do not return partial results
+        working.text = undefined; // Clear text on abort to prevent partial results from being used
+        return working; // We still return working so that the caller can inspect the history and logs for debugging
       }
 
       // Check for end condition
