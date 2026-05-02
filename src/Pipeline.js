@@ -30,6 +30,8 @@ import upperCase from "./commands/upperCase.js";
 import capitalize from "./commands/capitalize.js";
 import end from "./commands/end.js";
 import abort from "./commands/abort.js";
+import label from "./commands/label.js";
+import jumpTo from "./commands/jumpTo.js";
 
 import debugTemplate from "./templates/debug.liquid";
 
@@ -95,6 +97,8 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("capitalize", capitalize);
     Pipeline.staticCommandLib.set("end", end);
     Pipeline.staticCommandLib.set("abort", abort);
+    Pipeline.staticCommandLib.set("label", label);
+    Pipeline.staticCommandLib.set("jump-to", jumpTo);
   }
 
   //============================================================================
@@ -359,6 +363,25 @@ export class Pipeline {
       ...this.tailCommands,
     ];
     while (queue.length > 0) {
+
+      // Are we jumping ahead?
+      // If working.jumpto is set, it contains a comma-separated list of labels to try jumping to. We look for the first label that matches a command in the remaining queue and jump to it by removing all commands before it.
+      // If no labels match, we ignore the jumpto.
+      if(working.jumpto) {
+        for(let target of working.jumpto.split(",").map(s => s.trim())) {
+          const jumpIndex = queue.findIndex(cmd => cmd.name === "label" && cmd.arguments?.find(arg => arg.key === "name" && arg.value === target));
+          if(jumpIndex === -1) {
+            this.log(`Jump target "${target}" not found in remaining commands. Ignoring jumpto.`);
+          } else {
+            this.log(`Jumping to command "${target}" at index ${jumpIndex} in the queue.`);
+            queue.splice(0, jumpIndex); // Remove commands up to the jump target
+            break; // Only jump to the first valid target in the jumpto list
+          }
+        }
+        working.jumpto = null; // Reset jumpto after using it
+      }
+
+      // Get the next command and resolve any aliases
       let command = queue.shift();
       const displayName = command.name;
       command = this.resolveAlias(command);
