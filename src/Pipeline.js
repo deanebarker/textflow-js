@@ -369,7 +369,7 @@ export class Pipeline {
       // If no labels match, we ignore the jumpto.
       if(working.jumpto) {
         const jumpTargets = working.jumpto.split(",").map(s => s.trim());
-        this.log(`Jump targets specified: ${jumpTargets}`);
+        this.log('Jump targets specified', jumpTargets); 
         for(let target of jumpTargets) {
           const jumpIndex = queue.findIndex(cmd => cmd.name === "label" && cmd.arguments?.find(arg => arg.key === "name" && arg.value === target));
           if(jumpIndex === -1) {
@@ -390,7 +390,7 @@ export class Pipeline {
       this.wrapCommand(command, this);
 
       this.log(`Executing: ${displayName}`, command.arguments);
-
+``
       // Initialize command history tracking
       const history = {};
       history.command = {
