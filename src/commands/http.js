@@ -106,6 +106,12 @@ http.args = [
     description:
       "Headers to include in the request. The portion after header_ becomes the header name (e.g. header_Authorization sends an Authorization header).",
   },
+  {
+    name: "on-error",
+    type: "string",
+    description:
+      "Optional label to jump to on error. If not provided, will try http-error-{code}, http-error-{code category} (e.g. 4xx), http-error, and error in that order.",
+  }
 ];
 http.parseValidators = [
   {
