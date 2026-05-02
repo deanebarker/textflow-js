@@ -368,7 +368,9 @@ export class Pipeline {
       // If working.jumpto is set, it contains a comma-separated list of labels to try jumping to. We look for the first label that matches a command in the remaining queue and jump to it by removing all commands before it.
       // If no labels match, we ignore the jumpto.
       if(working.jumpto) {
-        for(let target of working.jumpto.split(",").map(s => s.trim())) {
+        const jumpTargets = working.jumpto.split(",").map(s => s.trim());
+        this.log(`Jump targets specified: ${jumpTargets}`);
+        for(let target of jumpTargets) {
           const jumpIndex = queue.findIndex(cmd => cmd.name === "label" && cmd.arguments?.find(arg => arg.key === "name" && arg.value === target));
           if(jumpIndex === -1) {
             this.log(`Jump target "${target}" not found in remaining commands. Ignoring jumpto.`);
