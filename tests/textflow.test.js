@@ -254,6 +254,34 @@ describe("execute flow control", () => {
     expect(working.history.length).toBe(1);
     expect(working.history[0].command.name).toBe("append");
   });
+
+  test("end command stops further commands from running", async () => {
+    const p = new Pipeline({
+      commands: [
+        cmd("append", { text: " A" }),
+        cmd("end"),
+        cmd("append", { text: " B" }),
+      ],
+    });
+    const working = await p.execute({ history: [], text: "x" });
+    expect(working.text).toBe("x A");
+  });
+
+  test("end command runs through pipeline finalization (clears tail commands)", async () => {
+    const p = new Pipeline({ commands: [cmd("end")] });
+    p.tailCommands = [cmd("append", { text: " tail" })];
+    await p.execute({ history: [], text: "x" });
+    expect(p.tailCommands).toHaveLength(0);
+  });
+
+  test("end command's own execution is recorded in history", async () => {
+    const p = new Pipeline({
+      commands: [cmd("append", { text: " A" }), cmd("end")],
+    });
+    const working = await p.execute({ history: [], text: "x" });
+    const ranNames = working.history.map((h) => h.command.name);
+    expect(ranNames).toEqual(["append", "end"]);
+  });
 });
 
 //==============================================================================

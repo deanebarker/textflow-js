@@ -498,7 +498,7 @@ export class Pipeline {
           working,
           command,
         );
-        return working; // Do not return partial results
+        queue.length = 0; // Drain the queue so the loop exits and finalization still runs
       }
 
       this.log(`Executed: ${command.name}`, command.arguments);
