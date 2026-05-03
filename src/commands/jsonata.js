@@ -12,7 +12,7 @@ async function jsonataQuery(working, command, p) {
     throw new Error(`JSONata expression failed to evaluate: ${e.message}`);
   }
 
-  return JSON.stringify(result);
+  return typeof result === "object" ? JSON.stringify(result) : String(result);
 }
 
 // Meta
