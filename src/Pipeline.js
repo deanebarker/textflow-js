@@ -56,6 +56,7 @@ export class Pipeline {
   vars = new Map(); // Variables for this pipeline execution
 
   static onLog = null; // Optional callback for log messages: (args) => void
+  static onError = null; // Optional callback for error messages: (args) => void
   static staticCommandLib = new Map(); // Commands available to all Pipeline instances
   instanceCommandLib = new Map(); // Commands specific to this instance
   static staticAliasLib = new Map(); // Aliases available to all Pipeline instances
@@ -376,7 +377,6 @@ export class Pipeline {
       ...this.tailCommands,
     ];
     while (queue.length > 0) {
-      
       // Are we moving ahead?
       // If working.goto is set, it contains a comma-separated list of labels to try going to.
       // We look for the first label that matches a command in the remaining queue and go to it by removing all commands before it.
@@ -484,9 +484,9 @@ export class Pipeline {
         history.output = working.text;
       } catch (ex) {
         const errorMessage = ex instanceof Error ? ex.message : String(ex);
-        this.log(`Error in command "${command.name}": ${errorMessage}`);
+        this.error(`Error in command "${command.name}": ${errorMessage}`);
         if (this.debug && ex instanceof Error && ex.stack) {
-          this.log(`Stack trace: ${ex.stack}`);
+          this.error(`Stack trace: ${ex.stack}`);
         }
         working.abort = true;
       }
@@ -587,6 +587,10 @@ export class Pipeline {
   log(...args) {
     if (this.debug) console.log(...args);
     if (Pipeline.onLog) Pipeline.onLog(args);
+  }
+  error(...args) {
+    if (this.debug) console.error(...args);
+    if (Pipeline.onError) Pipeline.onError(args);
   }
 
   /**
