@@ -222,10 +222,10 @@ test("Skips fetch when URL is invalid", async () => {
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
-test("Sets jumpto with http-error-url when URL is invalid", async () => {
+test("Sets goto with http-error-url when URL is invalid", async () => {
   vi.stubGlobal("fetch", makeFetchStub());
   const result = await execute([{ name: "http", url: "not-a-url" }], "input");
-  expect(result.jumpto).toBe("http-error-url,error");
+  expect(result.goto).toBe("http-error-url,error");
 });
 
 test("Preserves working.text when URL is invalid", async () => {
@@ -245,7 +245,7 @@ test("Treats empty URL as invalid", async () => {
   vi.stubGlobal("fetch", fetchMock);
   const result = await execute([{ name: "http", url: "" }], "input");
   expect(fetchMock).not.toHaveBeenCalled();
-  expect(result.jumpto).toBe("http-error-url,error");
+  expect(result.goto).toBe("http-error-url,error");
 });
 
 test("Treats non-http protocol as invalid", async () => {
@@ -256,7 +256,7 @@ test("Treats non-http protocol as invalid", async () => {
     "input",
   );
   expect(fetchMock).not.toHaveBeenCalled();
-  expect(result.jumpto).toBe("http-error-url,error");
+  expect(result.goto).toBe("http-error-url,error");
 });
 
 test("Accepts http:// URLs as valid", async () => {
@@ -275,7 +275,7 @@ test("Accepts https:// URLs as valid", async () => {
 
 // HTTP status error handling
 
-test("Sets jumpto with status-specific error label on 404", async () => {
+test("Sets goto with status-specific error label on 404", async () => {
   vi.stubGlobal(
     "fetch",
     makeFetchStub({ ok: false, status: 404, statusText: "Not Found" }),
@@ -284,10 +284,10 @@ test("Sets jumpto with status-specific error label on 404", async () => {
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  expect(result.jumpto).toContain("http-error-404");
+  expect(result.goto).toContain("http-error-404");
 });
 
-test("Sets jumpto with class-specific error label on 404", async () => {
+test("Sets goto with class-specific error label on 404", async () => {
   vi.stubGlobal(
     "fetch",
     makeFetchStub({ ok: false, status: 404, statusText: "Not Found" }),
@@ -296,10 +296,10 @@ test("Sets jumpto with class-specific error label on 404", async () => {
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  expect(result.jumpto).toContain("http-error-4xx");
+  expect(result.goto).toContain("http-error-4xx");
 });
 
-test("Sets jumpto with generic http-error and error labels on 404", async () => {
+test("Sets goto with generic http-error and error labels on 404", async () => {
   vi.stubGlobal(
     "fetch",
     makeFetchStub({ ok: false, status: 404, statusText: "Not Found" }),
@@ -308,7 +308,7 @@ test("Sets jumpto with generic http-error and error labels on 404", async () => 
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  const labels = result.jumpto.split(",");
+  const labels = result.goto.split(",");
   expect(labels).toContain("http-error");
   expect(labels).toContain("error");
 });
@@ -322,8 +322,8 @@ test("Generates 5xx error labels for 500 response", async () => {
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  expect(result.jumpto).toContain("http-error-500");
-  expect(result.jumpto).toContain("http-error-5xx");
+  expect(result.goto).toContain("http-error-500");
+  expect(result.goto).toContain("http-error-5xx");
 });
 
 test("Orders error labels from most to least specific", async () => {
@@ -335,7 +335,7 @@ test("Orders error labels from most to least specific", async () => {
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  expect(result.jumpto.split(",")).toEqual([
+  expect(result.goto.split(",")).toEqual([
     "http-error-404",
     "http-error-4xx",
     "http-error",
@@ -372,13 +372,13 @@ test("Does not abort the pipeline on HTTP error", async () => {
   expect(result.abort).toBeFalsy();
 });
 
-test("Does not set jumpto on a successful response", async () => {
+test("Does not set goto on a successful response", async () => {
   vi.stubGlobal("fetch", makeFetchStub({ status: 200, text: "ok" }));
   const result = await execute(
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  expect(result.jumpto).toBeFalsy();
+  expect(result.goto).toBeFalsy();
 });
 
 test("Triggers error path for 4xx but not 3xx responses", async () => {
@@ -391,12 +391,12 @@ test("Triggers error path for 4xx but not 3xx responses", async () => {
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  expect(result.jumpto).toBeFalsy();
+  expect(result.goto).toBeFalsy();
 });
 
 // on-error custom label
 
-test("Prepends on-error label to jumpto when provided", async () => {
+test("Prepends on-error label to goto when provided", async () => {
   vi.stubGlobal(
     "fetch",
     makeFetchStub({ ok: false, status: 404, statusText: "Not Found" }),
@@ -411,7 +411,7 @@ test("Prepends on-error label to jumpto when provided", async () => {
     ],
     "input",
   );
-  expect(result.jumpto.split(",")[0]).toBe("my-handler");
+  expect(result.goto.split(",")[0]).toBe("my-handler");
 });
 
 test("Keeps default error labels after the on-error label", async () => {
@@ -429,7 +429,7 @@ test("Keeps default error labels after the on-error label", async () => {
     ],
     "input",
   );
-  expect(result.jumpto.split(",")).toEqual([
+  expect(result.goto.split(",")).toEqual([
     "my-handler",
     "http-error-404",
     "http-error-4xx",
@@ -450,7 +450,7 @@ test("on-error has no effect on a successful response", async () => {
     ],
     "input",
   );
-  expect(result.jumpto).toBeFalsy();
+  expect(result.goto).toBeFalsy();
 });
 
 // Network / CORS errors (fetch rejects)
@@ -467,7 +467,7 @@ test("Catches fetch rejection without aborting the pipeline", async () => {
   expect(result.abort).toBeFalsy();
 });
 
-test("Sets http-error-unknown jumpto on fetch rejection", async () => {
+test("Sets http-error-unknown goto on fetch rejection", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
@@ -476,7 +476,7 @@ test("Sets http-error-unknown jumpto on fetch rejection", async () => {
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  expect(result.jumpto).toContain("http-error-unknown");
+  expect(result.goto).toContain("http-error-unknown");
 });
 
 test("Sets http-error and error labels on fetch rejection", async () => {
@@ -488,7 +488,7 @@ test("Sets http-error and error labels on fetch rejection", async () => {
     [{ name: "http", url: "https://example.com" }],
     "input",
   );
-  const labels = result.jumpto.split(",");
+  const labels = result.goto.split(",");
   expect(labels).toContain("http-error");
   expect(labels).toContain("error");
 });
@@ -518,7 +518,7 @@ test("Does not throw a ReferenceError when fetch rejects", async () => {
     "input",
   );
   expect(result.abort).toBeFalsy();
-  expect(result.jumpto).toBeTruthy();
+  expect(result.goto).toBeTruthy();
 });
 
 test("Honors on-error label when fetch rejects", async () => {
@@ -536,5 +536,5 @@ test("Honors on-error label when fetch rejects", async () => {
     ],
     "input",
   );
-  expect(result.jumpto.split(",")[0]).toBe("network-handler");
+  expect(result.goto.split(",")[0]).toBe("network-handler");
 });

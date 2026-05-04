@@ -5,7 +5,7 @@ async function http(working, command, p) {
   // If we have a bad URL, then don't even try
   if(!isValidURL(url)) {
     p.log(`Invalid URL: "${url}". Please provide a valid absolute or root-relative URL.`);
-    working.jumpto = "http-error-url,error";
+    working.goto = "http-error-url,error";
     return working.text;
   }
 
@@ -67,10 +67,10 @@ async function http(working, command, p) {
     if (command.hasArg("on-error")) {
       errorLabels.unshift(command.getArg("on-error")); //If they provided an error label, it gets priority
     }
-    working.jumpto = errorLabels.join(",");
+    working.goto = errorLabels.join(",");
 
     // If no jump target is specified, abort the pipeline
-    if (!working.jumpto) {
+    if (!working.goto) {
       p.log(`No on-error jump target specified, aborting pipeline.`);
       working.abort = true;
       return;

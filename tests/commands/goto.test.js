@@ -14,19 +14,19 @@ async function run(commands, text = "") {
 }
 
 // ==============================================================================
-// jump-to command
+// goto command
 // ==============================================================================
 
-describe("jump-to command", () => {
+describe("goto command", () => {
   test("is registered in the static command library", () => {
     const p = new Pipeline({ commands: [] });
-    expect(p.getCommandFunction("jump-to")).toBeTypeOf("function");
+    expect(p.getCommandFunction("goto")).toBeTypeOf("function");
   });
 
   test("does not modify working.text", async () => {
     const result = await run(
       [
-        cmd("jump-to", { label: "end" }),
+        cmd("goto", { label: "end" }),
         cmd("label", { name: "end" }),
       ],
       "untouched",
@@ -35,20 +35,20 @@ describe("jump-to command", () => {
   });
 
   test("aborts when label argument is missing", async () => {
-    const result = await run([cmd("jump-to")], "x");
+    const result = await run([cmd("goto")], "x");
     expect(result.abort).toBe(true);
   });
 
   test("validateCommand reports an error when label is missing", () => {
     const p = new Pipeline({ commands: [] });
-    const errors = p.validateCommand(cmd("jump-to"));
+    const errors = p.validateCommand(cmd("goto"));
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0]).toMatch(/label/i);
   });
 
   test("validateCommand passes when label is present", () => {
     const p = new Pipeline({ commands: [] });
-    const errors = p.validateCommand(cmd("jump-to", { label: "anywhere" }));
+    const errors = p.validateCommand(cmd("goto", { label: "anywhere" }));
     expect(errors).toEqual([]);
   });
 });
@@ -70,15 +70,15 @@ describe("label command", () => {
 });
 
 // ==============================================================================
-// Pipeline jump-to behavior (queue manipulation)
+// Pipeline goto behavior (queue manipulation)
 // ==============================================================================
 
-describe("Pipeline jump-to behavior", () => {
-  test("skips commands between jump-to and the matching label", async () => {
+describe("Pipeline goto behavior", () => {
+  test("skips commands between goto and the matching label", async () => {
     const result = await run(
       [
         cmd("set", { text: "start" }),
-        cmd("jump-to", { label: "target" }),
+        cmd("goto", { label: "target" }),
         cmd("append", { text: " skipped-1" }),
         cmd("append", { text: " skipped-2" }),
         cmd("label", { name: "target" }),
@@ -93,7 +93,7 @@ describe("Pipeline jump-to behavior", () => {
     const result = await run(
       [
         cmd("set", { text: "x" }),
-        cmd("jump-to", { label: "L" }),
+        cmd("goto", { label: "L" }),
         cmd("append", { text: " skip" }),
         cmd("label", { name: "L" }),
         cmd("append", { text: " A" }),
@@ -108,7 +108,7 @@ describe("Pipeline jump-to behavior", () => {
     const result = await run(
       [
         cmd("set", { text: "x" }),
-        cmd("jump-to", { label: "second" }),
+        cmd("goto", { label: "second" }),
         cmd("label", { name: "first" }),
         cmd("append", { text: " not-this" }),
         cmd("label", { name: "second" }),
@@ -119,11 +119,11 @@ describe("Pipeline jump-to behavior", () => {
     expect(result.text).toBe("x here");
   });
 
-  test("ignores jump-to when no label exists at all", async () => {
+  test("ignores goto when no label exists at all", async () => {
     const result = await run(
       [
         cmd("set", { text: "x" }),
-        cmd("jump-to", { label: "missing" }),
+        cmd("goto", { label: "missing" }),
         cmd("append", { text: " continues" }),
       ],
       "",
@@ -131,11 +131,11 @@ describe("Pipeline jump-to behavior", () => {
     expect(result.text).toBe("x continues");
   });
 
-  test("ignores jump-to when no label matches the target name", async () => {
+  test("ignores goto when no label matches the target name", async () => {
     const result = await run(
       [
         cmd("set", { text: "x" }),
-        cmd("jump-to", { label: "missing" }),
+        cmd("goto", { label: "missing" }),
         cmd("label", { name: "different" }),
         cmd("append", { text: " ran" }),
       ],
@@ -147,7 +147,7 @@ describe("Pipeline jump-to behavior", () => {
   test("does not abort when the label is missing", async () => {
     const result = await run(
       [
-        cmd("jump-to", { label: "missing" }),
+        cmd("goto", { label: "missing" }),
         cmd("set", { text: "completed" }),
       ],
       "",
@@ -156,15 +156,15 @@ describe("Pipeline jump-to behavior", () => {
     expect(result.text).toBe("completed");
   });
 
-  test("supports multiple jump-tos in sequence", async () => {
+  test("supports multiple gotos in sequence", async () => {
     const result = await run(
       [
         cmd("set", { text: "x" }),
-        cmd("jump-to", { label: "first" }),
+        cmd("goto", { label: "first" }),
         cmd("append", { text: " skip-1" }),
         cmd("label", { name: "first" }),
         cmd("append", { text: " A" }),
-        cmd("jump-to", { label: "second" }),
+        cmd("goto", { label: "second" }),
         cmd("append", { text: " skip-2" }),
         cmd("label", { name: "second" }),
         cmd("append", { text: " B" }),
@@ -174,10 +174,10 @@ describe("Pipeline jump-to behavior", () => {
     expect(result.text).toBe("x A B");
   });
 
-  test("clears jumpto after a successful jump", async () => {
+  test("clears goto after a successful jump", async () => {
     const result = await run(
       [
-        cmd("jump-to", { label: "L" }),
+        cmd("goto", { label: "L" }),
         cmd("label", { name: "L" }),
         cmd("set", { text: "ok" }),
       ],
@@ -186,12 +186,12 @@ describe("Pipeline jump-to behavior", () => {
     expect(result.text).toBe("ok");
   });
 
-  test("clears jumpto after a failed jump so subsequent jumps still work", async () => {
+  test("clears goto after a failed jump so subsequent jumps still work", async () => {
     const result = await run(
       [
-        cmd("jump-to", { label: "missing" }),
+        cmd("goto", { label: "missing" }),
         cmd("set", { text: "first" }),
-        cmd("jump-to", { label: "L" }),
+        cmd("goto", { label: "L" }),
         cmd("append", { text: " skipped" }),
         cmd("label", { name: "L" }),
         cmd("append", { text: " end" }),
@@ -201,12 +201,12 @@ describe("Pipeline jump-to behavior", () => {
     expect(result.text).toBe("first end");
   });
 
-  test("only jumps forward — labels before jump-to are not reachable", async () => {
+  test("only jumps forward — labels before goto are not reachable", async () => {
     const result = await run(
       [
         cmd("label", { name: "before" }),
         cmd("set", { text: "x" }),
-        cmd("jump-to", { label: "before" }),
+        cmd("goto", { label: "before" }),
         cmd("append", { text: " end" }),
       ],
       "",
@@ -217,7 +217,7 @@ describe("Pipeline jump-to behavior", () => {
   test("the matched label itself runs (it is the landing point, not skipped)", async () => {
     const p = new Pipeline({
       commands: [
-        cmd("jump-to", { label: "here" }),
+        cmd("goto", { label: "here" }),
         cmd("append", { text: " skipped" }),
         cmd("label", { name: "here" }),
       ],
@@ -231,7 +231,7 @@ describe("Pipeline jump-to behavior", () => {
   test("history records only the commands that actually ran", async () => {
     const p = new Pipeline({
       commands: [
-        cmd("jump-to", { label: "L" }),
+        cmd("goto", { label: "L" }),
         cmd("append", { text: " A" }),
         cmd("append", { text: " B" }),
         cmd("label", { name: "L" }),
@@ -240,13 +240,13 @@ describe("Pipeline jump-to behavior", () => {
     });
     const working = await p.execute(new WorkingData("x"));
     const ranNames = working.history.map((h) => h.command.name);
-    expect(ranNames).toEqual(["jump-to", "label", "append"]);
+    expect(ranNames).toEqual(["goto", "label", "append"]);
   });
 
   test("jump target resolves against tail commands too", async () => {
     const p = new Pipeline({
       commands: [
-        cmd("jump-to", { label: "tail-target" }),
+        cmd("goto", { label: "tail-target" }),
         cmd("append", { text: " skipped" }),
       ],
     });

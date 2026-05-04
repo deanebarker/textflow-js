@@ -31,7 +31,7 @@ import capitalize from "./commands/capitalize.js";
 import end from "./commands/end.js";
 import abort from "./commands/abort.js";
 import label from "./commands/label.js";
-import jumpTo from "./commands/jumpTo.js";
+import gotoCommand from "./commands/goto.js";
 
 import debugTemplate from "./templates/debug.liquid";
 
@@ -98,7 +98,7 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("end", end);
     Pipeline.staticCommandLib.set("abort", abort);
     Pipeline.staticCommandLib.set("label", label);
-    Pipeline.staticCommandLib.set("jump-to", jumpTo);
+    Pipeline.staticCommandLib.set("goto", gotoCommand);
   }
 
   //============================================================================
@@ -110,7 +110,9 @@ export class Pipeline {
       throw new Error("Pipeline constructor requires a commandSet object");
     }
     if (!Array.isArray(commandSet.commands)) {
-      throw new Error("Pipeline constructor requires commandSet.commands to be an array");
+      throw new Error(
+        "Pipeline constructor requires commandSet.commands to be an array",
+      );
     }
 
     this.commands = commandSet.commands;
@@ -242,7 +244,9 @@ export class Pipeline {
           if (this.pipeline.vars.has(varName)) {
             value = this.pipeline.vars.get(varName);
           } else {
-            this.pipeline.log(`Warning: Variable "{${varName}}" referenced in command "${this.name}" but not found in pipeline vars`);
+            this.pipeline.log(
+              `Warning: Variable "{${varName}}" referenced in command "${this.name}" but not found in pipeline vars`,
+            );
             value = null;
           }
         }
@@ -274,18 +278,19 @@ export class Pipeline {
     const alias = this.getAlias(command.name);
     if (!alias) return command;
 
-    const presetPairs = Object.entries(alias.presetArgs).map(([key, value]) => ({
-      key,
-      value,
-    }));
+    const presetPairs = Object.entries(alias.presetArgs).map(
+      ([key, value]) => ({
+        key,
+        value,
+      }),
+    );
     const userArgs = command.arguments ?? [];
     const merged = presetPairs.map((pair) => {
       const override = userArgs.find((a) => a.key === pair.key);
       return override ?? pair;
     });
     const extraUserArgs = userArgs.filter(
-      (a) =>
-        !Object.prototype.hasOwnProperty.call(alias.presetArgs, a.key),
+      (a) => !Object.prototype.hasOwnProperty.call(alias.presetArgs, a.key),
     );
 
     return {
@@ -327,9 +332,8 @@ export class Pipeline {
    * Execute the pipeline on working data
    */
   async execute(working) {
-
     // If no working data provided, start with empty text
-    working = working ?? '';
+    working = working ?? "";
 
     // If working is a string, convert it to a WorkingData object
     if (typeof working === "string") {
@@ -354,8 +358,14 @@ export class Pipeline {
     const initialInput = working.text;
 
     // Validate command arrays before execution
-    if (!Array.isArray(this.headCommands) || !Array.isArray(this.commands) || !Array.isArray(this.tailCommands)) {
-      throw new Error("Pipeline execution failed: command arrays are not properly initialized");
+    if (
+      !Array.isArray(this.headCommands) ||
+      !Array.isArray(this.commands) ||
+      !Array.isArray(this.tailCommands)
+    ) {
+      throw new Error(
+        "Pipeline execution failed: command arrays are not properly initialized",
+      );
     }
 
     // Execute all commands in order. Using a queue (rather than a for-of)
@@ -366,24 +376,35 @@ export class Pipeline {
       ...this.tailCommands,
     ];
     while (queue.length > 0) {
-
-      // Are we jumping ahead?
-      // If working.jumpto is set, it contains a comma-separated list of labels to try jumping to. We look for the first label that matches a command in the remaining queue and jump to it by removing all commands before it.
-      // If no labels match, we ignore the jumpto.
-      if(working.jumpto) {
-        const jumpTargets = working.jumpto.split(",").map(s => s.trim());
-        this.log('Jump targets specified', jumpTargets); 
-        for(let target of jumpTargets) {
-          const jumpIndex = queue.findIndex(cmd => cmd.name === "label" && cmd.arguments?.find(arg => arg.key === "name" && arg.value === target));
-          if(jumpIndex === -1) {
-            this.log(`Jump target "${target}" not found in remaining commands. Ignoring jumpto.`);
+      
+      // Are we moving ahead?
+      // If working.goto is set, it contains a comma-separated list of labels to try going to.
+      // We look for the first label that matches a command in the remaining queue and go to it by removing all commands before it.
+      // If no labels match, we ignore the goto.
+      if (working.goto) {
+        const targets = working.goto.split(",").map((s) => s.trim());
+        this.log("Jump targets specified", targets);
+        for (let target of targets) {
+          const targetIndex = queue.findIndex(
+            (cmd) =>
+              cmd.name === "label" &&
+              cmd.arguments?.find(
+                (arg) => arg.key === "name" && arg.value === target,
+              ),
+          );
+          if (targetIndex === -1) {
+            this.log(
+              `Target "${target}" not found in remaining commands. Ignoring goto.`,
+            );
           } else {
-            this.log(`Jumping to command "${target}" at index ${jumpIndex} in the queue.`);
-            queue.splice(0, jumpIndex); // Remove commands up to the jump target
-            break; // Only jump to the first valid target in the jumpto list
+            this.log(
+              `Going to command "${target}" at index ${targetIndex} in the queue.`,
+            );
+            queue.splice(0, targetIndex); // Remove commands up to the found target
+            break; // Only go to the first valid target in the goto list
           }
         }
-        working.jumpto = null; // Reset jumpto after using it
+        working.goto = null; // Reset goto after using it
       }
 
       // Get the next command and resolve any aliases
@@ -393,7 +414,7 @@ export class Pipeline {
       this.wrapCommand(command, this);
 
       this.log(`Executing: ${displayName}`, command.arguments);
-``
+      ``;
       // Initialize command history tracking
       const history = {};
       history.command = {
@@ -499,11 +520,7 @@ export class Pipeline {
 
       // Check for end condition
       if (working.end) {
-        this.log(
-          `End triggered by command: ${command.name}`,
-          working,
-          command,
-        );
+        this.log(`End triggered by command: ${command.name}`, working, command);
         queue.length = 0; // Drain the queue so the loop exits and finalization still runs
       }
 
@@ -557,7 +574,9 @@ export class Pipeline {
       const eventResult = document.dispatchEvent(event);
       return eventResult;
     } catch (error) {
-      this.log(`Warning: Error during event emission for "${type}": ${error.message}`);
+      this.log(
+        `Warning: Error during event emission for "${type}": ${error.message}`,
+      );
       return true; // Return true to allow pipeline to continue
     }
   }
@@ -576,7 +595,9 @@ export class Pipeline {
   static async getDebugData(working) {
     try {
       if (typeof document === "undefined") {
-        throw new Error("Debug data generation requires a browser environment with document object");
+        throw new Error(
+          "Debug data generation requires a browser environment with document object",
+        );
       }
 
       const engine = new Liquid();
@@ -590,7 +611,9 @@ export class Pipeline {
 
       const debugElement = document.createElement("debug-data");
       if (!debugElement.attachShadow) {
-        throw new Error("Failed to create shadow DOM: element does not support attachShadow");
+        throw new Error(
+          "Failed to create shadow DOM: element does not support attachShadow",
+        );
       }
 
       const shadowRoot = debugElement.attachShadow({ mode: "open" });
