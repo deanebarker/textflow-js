@@ -5,9 +5,24 @@ export async function execute(commands, text) {
   commands = commands.map((c) => convertCommand(c));
   const p = new Pipeline({ commands });
   p.debug = true;
-  working = await p.execute(working);
+  p.onLog = (message) => {
+    console.log("Pipeline log:", message);
+  }
+  p.onError = (message) => {
+    console.error("Pipeline error:", message);
+  }
+
+  try
+  {
+    working = await p.execute(working);
+  }
+  catch(e) {
+    console.error("Error during pipeline execution:", e);
+    throw e;
+  }
+  
   if (working.abort) {
-    throw new Error("Pipeline execution aborted due to validation failure.");
+    throw new Error(p.log);
   }
   return working;
 }

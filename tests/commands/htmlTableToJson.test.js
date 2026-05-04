@@ -98,22 +98,19 @@ test("Extracts table with selector", async () => {
 test("Throws error when selector doesn't match", async () => {
   const command = { name: "table-to-json", selector: ".nonexistent" };
   const html = "<table><tr><td>Data</td></tr></table>";
-  const result = await execute([command], html);
-  expect(result.text).toBeUndefined();
+  await expect(execute([command], html)).rejects.toThrow();
 });
 
 test("Throws error when selected element is not a table", async () => {
   const command = { name: "table-to-json", selector: ".container" };
   const html = '<div class="container"><table><tr><td>Data</td></tr></table></div>';
-  const result = await execute([command], html);
-  expect(result.text).toBeUndefined();
+  await expect(execute([command], html)).rejects.toThrow();
 });
 
 test("Throws error when no table found without selector", async () => {
   const command = { name: "table-to-json" };
   const html = "<div><p>No table here</p></div>";
-  const result = await execute([command], html);
-  expect(result.text).toBeUndefined();
+  await expect(execute([command], html)).rejects.toThrow();
 });
 
 test("Returns valid JSON output", async () => {

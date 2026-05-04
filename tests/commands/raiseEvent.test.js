@@ -3,8 +3,7 @@ import { execute } from "../helpers.js";
 
 test("Requires a name argument", async () => {
   const command = { name: "raise-event" };
-  const result = await execute([command], "test data");
-  expect(result.text).toBeUndefined();
+  await expect(execute([command], "test data")).rejects.toThrow();
 });
 
 test("Does not modify working.text", async () => {

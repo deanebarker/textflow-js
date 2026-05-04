@@ -22,12 +22,14 @@ async function templateJson(working, command, p) {
     template = el.innerHTML;
   }
 
+  // TODO: I need to figure out a Node equivalent
   const engine = getLiquidEngine();
-  if(window.liquidFilters) {
-    for(const [name, fn] of Object.entries(window.liquidFilters)) {
+  if (typeof window !== "undefined" && window.liquidFilters) {
+    for (const [name, fn] of Object.entries(window.liquidFilters)) {
       engine.registerFilter(name, fn);
     }
   }
+
   let data;
   try {
     data = JSON.parse(working.text);
