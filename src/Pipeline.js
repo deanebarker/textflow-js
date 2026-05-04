@@ -328,6 +328,9 @@ export class Pipeline {
    */
   async execute(working) {
 
+    // If no working data provided, start with empty text
+    working = working ?? '';
+
     // If working is a string, convert it to a WorkingData object
     if (typeof working === "string") {
       working = new WorkingData(working);
