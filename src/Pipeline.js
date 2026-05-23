@@ -5,6 +5,7 @@ import absolutize from "./commands/absolutize.js";
 import jsonataQuery from "./commands/jsonata.js";
 import http from "./commands/http.js";
 import addCss from "./commands/addCss.js";
+import globalCss from "./commands/globalCss.js";
 import extract from "./commands/extract.js";
 import wrap from "./commands/wrap.js";
 import templateJson from "./commands/templateJson.js";
@@ -75,6 +76,7 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("new-lines", newLines);
     Pipeline.staticCommandLib.set("http", http);
     Pipeline.staticCommandLib.set("add-css", addCss);
+    Pipeline.staticCommandLib.set("global-css", globalCss);
     Pipeline.staticCommandLib.set("jsonata", jsonataQuery);
     Pipeline.staticCommandLib.set("set-debug", setDebug);
     Pipeline.staticCommandLib.set("no-op", noOp);
