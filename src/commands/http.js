@@ -1,6 +1,11 @@
 async function http(working, command, p) {
-  const url = command.getArg("url");
+  let url = command.getArg("url");
   const method = command.getArg("method")?.toUpperCase() ?? "GET";
+
+  // If they didn't provide a URL, then use the working text
+  if(!url) {
+    url = working.text.trim();
+  }
 
   // If we have a bad URL, then don't even try
   if(!isValidURL(url)) {
@@ -113,12 +118,7 @@ http.args = [
       "Optional label to jump to on error. If not provided, will try http-error-{code}, http-error-{code category} (e.g. 4xx), http-error, and error in that order.",
   }
 ];
-http.parseValidators = [
-  {
-    test: (command) => command.hasArg("url"),
-    message: "You must provide a URL to fetch.",
-  },
-];
+http.parseValidators = []; 
 
 // Helpers
 
