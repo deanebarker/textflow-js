@@ -34,7 +34,8 @@ async function templateJson(working, command, p) {
   try {
     data = JSON.parse(working.text);
   } catch (e) {
-    // Swallow it, they might just use vars
+    // If it's not JSON, just inject it as a string
+    data = working.text;
   }
   
 
