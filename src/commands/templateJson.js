@@ -2,7 +2,7 @@ import { getLiquidEngine } from "../helpers.js";
 
 async function templateJson(working, command, p) {
   // Get all arguments upfront
-  const template = command.getArg("template");
+  const template = command.getArg("source,template");
   const url = command.getArg("url");
   const selector = command.getArg("selector");
 
@@ -51,12 +51,17 @@ async function templateJson(working, command, p) {
 }
 
 // Meta
-templateJson.title = "Template JSON";
+templateJson.title = "Template";
 templateJson.description =
-  "Apply a Liquid template to JSON data to generate HTML. The entire working data is injected as an object in a variable called 'data'.";
+  "Apply a Liquid template to the working data. The entire working data is injected as an object or string in a variable called 'data'. Variables are injected as a variable called 'vars'.";
 templateJson.args = [
   {
     name: "template",
+    type: "string",
+    description: "Liquid template string",
+  },
+  {
+    name: "source",
     type: "string",
     description: "Liquid template string",
   },
@@ -76,6 +81,7 @@ templateJson.parseValidators = [
     test: (command) => {
       return (
         command.hasArg("template") ||
+        command.hasArg("source") ||
         command.hasArg("url") ||
         command.hasArg("selector")
       );
@@ -84,5 +90,6 @@ templateJson.parseValidators = [
       "You must provide a template, a URL to fetch a template from, or a templateSelector.",
   },
 ];
+
 
 export default templateJson;

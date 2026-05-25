@@ -71,7 +71,8 @@ export class Pipeline {
     Pipeline.staticCommandLib.set("absolutize", absolutize);
     Pipeline.staticCommandLib.set("extract", extract);
     Pipeline.staticCommandLib.set("wrap", wrap);
-    Pipeline.staticCommandLib.set("template-json", templateJson);
+    Pipeline.staticCommandLib.set("template", templateJson);
+    Pipeline.staticCommandLib.set("template-json", templateJson); // legacy
     Pipeline.staticCommandLib.set("make-table", makeTable);
     Pipeline.staticCommandLib.set("new-lines", newLines);
     Pipeline.staticCommandLib.set("http", http);
